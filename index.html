@@ -1,0 +1,1810 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>算数クエスト</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { height: 100%; }
+  body {
+    font-family: "Hiragino Maru Gothic ProN", "BIZ UDGothic", "Yu Gothic UI", "Meiryo", sans-serif;
+    background: linear-gradient(160deg, #7ecbff 0%, #b3e5ff 35%, #fff3b0 100%);
+    color: #333;
+    touch-action: manipulation;
+    min-height: 100%;
+  }
+  #app { max-width: 560px; margin: 0 auto; padding: 12px 12px 40px; }
+  .screen { display: none; }
+  .screen.active { display: block; animation: fadein .3s ease; }
+  @keyframes fadein { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; } }
+
+  h1 {
+    text-align: center; font-size: 2.2rem; color: #ff6b35; margin: 14px 0 2px;
+    text-shadow: 2px 2px 0 #fff, 4px 4px 0 rgba(255,150,50,.3);
+    letter-spacing: .05em;
+  }
+  h1 rt { font-size: .85rem; color: #ff8c5a; }
+  .subtitle { text-align: center; color: #2a7fbf; font-weight: bold; margin-bottom: 14px; }
+
+  .panel {
+    background: rgba(255,255,255,.92); border-radius: 20px; padding: 14px;
+    margin-bottom: 14px; box-shadow: 0 4px 12px rgba(60,120,200,.15);
+  }
+  .panel h2 { font-size: 1.05rem; color: #2a7fbf; margin-bottom: 10px; }
+  .panel h2::before { content: "★ "; color: #ffb703; }
+
+  .btn-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+
+  button {
+    font-family: inherit; font-size: 1.1rem; font-weight: bold; color: #fff;
+    border: none; border-radius: 16px; min-height: 56px; padding: 8px 12px;
+    cursor: pointer; box-shadow: 0 4px 0 rgba(0,0,0,.18);
+    transition: transform .08s ease, filter .1s ease;
+  }
+  button:active { transform: translateY(3px); box-shadow: 0 1px 0 rgba(0,0,0,.18); }
+
+  .play-btn { background: #845ef7; display: flex; flex-direction: column; gap: 2px; align-items: center; justify-content: center; }
+  .play-btn small { font-size: .72rem; font-weight: normal; opacity: .95; }
+  .hero-btn { display: flex; align-items: center; justify-content: center; gap: 8px; min-height: 72px; }
+  .hero-btn[data-hero="knight"] { background: #4dabf7; }
+  .hero-btn[data-hero="wizard"] { background: #da77f2; }
+  .hero-btn svg { width: 44px; height: 44px; }
+  .mode-btn { background: #4dabf7; }
+  .mode-btn[data-mode="add"] { background: #4dabf7; }
+  .mode-btn[data-mode="sub"] { background: #51cf66; }
+  .mode-btn[data-mode="mul"] { background: #ff922b; }
+  .mode-btn[data-mode="div"] { background: #cc5de8; }
+  .mode-btn[data-mode="mix"] { background: #ff6b6b; grid-column: 1 / -1; }
+  .level-btn { background: #74c0fc; display: flex; flex-direction: column; gap: 2px; align-items: center; justify-content: center; }
+  .level-btn small { font-size: .72rem; font-weight: normal; opacity: .95; }
+  .input-btn { background: #94d82d; }
+
+  .mode-btn.selected, .level-btn.selected, .input-btn.selected, .play-btn.selected, .hero-btn.selected {
+    outline: 4px solid #ffd43b; filter: brightness(1.08);
+    position: relative;
+  }
+  .mode-btn.selected::after, .level-btn.selected::after, .input-btn.selected::after, .play-btn.selected::after, .hero-btn.selected::after {
+    content: "✔"; position: absolute; top: -10px; right: -6px;
+    background: #ffd43b; color: #7a5c00; border-radius: 50%;
+    width: 26px; height: 26px; line-height: 26px; font-size: .9rem;
+  }
+  button.locked { background: #ced4da !important; color: #f1f3f5; box-shadow: none; cursor: default; }
+  button.locked:active { transform: none; }
+
+  #btn-start {
+    width: 100%; min-height: 68px; font-size: 1.5rem;
+    background: linear-gradient(135deg, #ff922b, #ff6b35);
+    border-radius: 22px; margin-bottom: 14px;
+    animation: pulse 1.6s infinite;
+  }
+  @keyframes pulse { 0%,100% { transform: scale(1); } 50% { transform: scale(1.03); } }
+
+  #hiscore-table { width: 100%; border-collapse: collapse; font-size: .88rem; margin-bottom: 10px; }
+  #hiscore-table th, #hiscore-table td { padding: 6px 3px; text-align: center; border-bottom: 2px dotted #cde4f7; }
+  #hiscore-table th { color: #2a7fbf; }
+  #hiscore-table td { font-weight: bold; color: #555; }
+  #btn-erase { background: #adb5bd; width: 100%; font-size: .95rem; min-height: 48px; }
+
+  #btn-mute {
+    position: fixed; top: 10px; right: 10px; z-index: 50;
+    width: 52px; height: 52px; min-height: 52px; border-radius: 50%;
+    background: #fff; color: #333; font-size: 1.4rem;
+    box-shadow: 0 3px 8px rgba(0,0,0,.25);
+  }
+
+  #map-board { position: relative; height: 250px; }
+  #map-path { position: absolute; left: 0; top: 0; width: 100%; height: 100%; }
+  .map-tag { position: absolute; font-size: .72rem; font-weight: bold; color: #495057; z-index: 1; }
+  .stage-node { position: absolute; width: 76px; transform: translate(-50%, -50%); text-align: center; z-index: 2; }
+  .stage-dot {
+    width: 50px; height: 50px; line-height: 50px; margin: 0 auto; border-radius: 50%;
+    background: #dee2e6; font-size: 1.3rem; box-shadow: 0 3px 0 rgba(0,0,0,.12);
+  }
+  .stage-dot svg { width: 38px; height: 38px; margin-top: 5px; }
+  .stage-node.cleared .stage-dot { background: #ffe066; }
+  .stage-node.current .stage-dot { background: #ffa94d; animation: pulse 1.4s infinite; }
+  .stage-node small { display: block; font-size: .62rem; font-weight: bold; color: #495057; margin-top: 3px; line-height: 1.5; }
+  .stage-node small rt { font-size: .5rem; color: #868e96; }
+  #map-total { text-align: center; font-weight: bold; color: #2a7fbf; margin-top: 8px; font-size: 1.05rem; }
+  #map-clear-banner { display: none; text-align: center; font-size: 1.2rem; font-weight: bold; color: #e8590c; margin-top: 8px; }
+  #map-clear-banner.show { display: block; animation: pulse 1.2s infinite; }
+  #btn-map-start { width: 100%; min-height: 64px; font-size: 1.2rem; background: linear-gradient(135deg, #ff922b, #ff6b35); border-radius: 20px; margin-bottom: 10px; }
+  #btn-map-back { width: 100%; min-height: 52px; background: #4dabf7; }
+
+  #game-header { display: flex; justify-content: space-between; align-items: center; margin: 8px 0 8px; gap: 6px; flex-wrap: wrap; }
+  .hud { background: rgba(255,255,255,.9); border-radius: 14px; padding: 6px 12px; font-weight: bold; color: #2a7fbf; font-size: 1rem; }
+  #hud-combo { color: #ff6b35; min-width: 96px; text-align: center; }
+  #btn-quit { background: #adb5bd; min-height: 44px; font-size: .85rem; padding: 4px 10px; }
+
+  #stage-label {
+    display: none; text-align: center; font-weight: bold; color: #2a7fbf;
+    background: rgba(255,255,255,.85); border-radius: 12px; padding: 4px; margin-bottom: 8px; font-size: 1rem;
+  }
+  #stage-label rt { font-size: .55rem; color: #74a5c9; }
+
+  #timer-wrap { background: rgba(255,255,255,.8); border-radius: 12px; height: 22px; overflow: hidden; margin-bottom: 10px; }
+  #timer-bar { height: 100%; width: 100%; background: linear-gradient(90deg, #51cf66, #94d82d); border-radius: 12px; }
+  #timer-bar.low { background: linear-gradient(90deg, #ff6b6b, #ff922b); }
+
+  #battle-zone {
+    position: relative; height: 170px; border-radius: 18px; margin-bottom: 10px; overflow: hidden;
+    background: linear-gradient(180deg, #d0ebff 0%, #e7f5ff 55%, #b2f2bb 100%);
+    box-shadow: inset 0 2px 10px rgba(60,120,200,.18);
+  }
+  #battle-zone.theme-1 { background: linear-gradient(180deg, #a5d8ff 0%, #d8f5a2 55%, #8ce99a 100%); }
+  #battle-zone.theme-2 { background: linear-gradient(180deg, #c3fae8 0%, #8ce99a 50%, #40c057 100%); }
+  #battle-zone.theme-3 { background: linear-gradient(180deg, #4263eb 0%, #748ffc 55%, #d0bfff 100%); }
+  #battle-zone.theme-4 { background: linear-gradient(180deg, #ffd8a8 0%, #ffa94d 55%, #ff6b6b 100%); }
+  #battle-zone.theme-5 { background: linear-gradient(180deg, #5f3dc4 0%, #9775fa 55%, #e599f7 100%); }
+  #battle-zone.flash { animation: zoneflash .45s ease; }
+  @keyframes zoneflash { 0% { box-shadow: inset 0 0 0 90px rgba(255,255,255,.95); } 100% { box-shadow: inset 0 2px 10px rgba(60,120,200,.18); } }
+  #battle-zone.quake { animation: quake .55s ease; }
+  @keyframes quake {
+    0%,100% { transform: translate(0,0); }
+    20% { transform: translate(-6px,3px); } 40% { transform: translate(6px,-3px); }
+    60% { transform: translate(-4px,2px); } 80% { transform: translate(4px,-2px); }
+  }
+  #enemy-wrap { position: absolute; left: 50%; bottom: 30px; width: 96px; margin-left: -48px; text-align: center; will-change: transform; }
+  #enemy-wrap.boss { width: 140px; margin-left: -70px; bottom: 16px; }
+  #enemy-hp { width: 64px; height: 10px; margin: 0 auto 3px; background: rgba(255,255,255,.9); border-radius: 6px; overflow: hidden; box-shadow: inset 0 1px 2px rgba(0,0,0,.25); }
+  #enemy-wrap.boss #enemy-hp { width: 104px; height: 12px; }
+  #enemy-hp-fill { height: 100%; width: 100%; background: linear-gradient(90deg, #fa5252, #ff8787); border-radius: 6px; transition: width .25s ease; }
+  #enemy-sprite { display: inline-block; }
+  #enemy-sprite svg { width: 76px; height: 76px; display: block; margin: 0 auto; }
+  #enemy-wrap.boss #enemy-sprite svg { width: 116px; height: 116px; }
+  #enemy-sprite.intro { animation: eintro .6s ease; }
+  @keyframes eintro { 0% { transform: scale(0); } 70% { transform: scale(1.15); } 100% { transform: scale(1); } }
+  #enemy-sprite.hit { animation: ehit .32s ease; }
+  @keyframes ehit {
+    0% { filter: brightness(2.6) saturate(.3); }
+    30% { transform: translateX(-7px); } 60% { transform: translateX(6px); }
+    100% { filter: none; transform: translateX(0); }
+  }
+  #enemy-sprite.dodge { animation: edodge .55s ease; }
+  @keyframes edodge {
+    0% { transform: translateX(0); }
+    28% { transform: translateX(-52px) rotate(-16deg); }
+    62% { transform: translateX(44px) rotate(12deg); }
+    100% { transform: translateX(0); }
+  }
+  #enemy-sprite.defeat { animation: edefeat .75s ease forwards; }
+  @keyframes edefeat {
+    35% { transform: scale(1.28); filter: brightness(2.4); }
+    100% { transform: scale(.05) rotate(320deg); opacity: 0; }
+  }
+  #speech {
+    position: absolute; top: 30px; transform: translateX(-50%); z-index: 9;
+    background: #fff; border: 2px solid #495057; border-radius: 12px; padding: 3px 9px;
+    font-size: .78rem; font-weight: bold; color: #343a40; white-space: nowrap;
+    opacity: 0; transition: opacity .2s; pointer-events: none;
+  }
+  #speech.show { opacity: 1; }
+  #hero { position: absolute; left: 8px; bottom: 2px; width: 56px; z-index: 4; }
+  #hero svg { width: 56px; height: 56px; display: block; }
+  #hero.attack { animation: heroatk .35s ease; }
+  @keyframes heroatk { 30% { transform: translate(16px, -10px) rotate(-12deg); } 100% { transform: translate(0, 0); } }
+  .shot { position: absolute; z-index: 6; left: 0; top: 0; font-size: 30px; line-height: 1; transition: transform .17s ease-in; pointer-events: none; }
+  .shot.crit { font-size: 44px; }
+  .spark { position: absolute; z-index: 7; width: 10px; height: 10px; border-radius: 50%; pointer-events: none; transition: transform .5s ease-out, opacity .5s ease-out; }
+  .dmgpop {
+    position: absolute; z-index: 8; font-weight: bold; font-size: 1.7rem; color: #e8590c;
+    text-shadow: 1px 1px 0 #fff, -1px -1px 0 #fff, 1px -1px 0 #fff, -1px 1px 0 #fff; pointer-events: none;
+    transition: transform .7s ease-out, opacity .7s ease-out;
+  }
+  .dmgpop.crit { font-size: 2.4rem; color: #d6336c; }
+  #battle-banner {
+    position: absolute; top: 6px; left: 0; right: 0; text-align: center; z-index: 10;
+    font-size: 1.2rem; font-weight: bold; color: #c92a2a;
+    text-shadow: 1px 1px 0 #fff, -1px -1px 0 #fff, 1px -1px 0 #fff, -1px 1px 0 #fff;
+    opacity: 0; transition: opacity .25s; pointer-events: none;
+  }
+  #battle-banner.show { opacity: 1; }
+  #review-label {
+    position: absolute; left: 0; right: 0; top: 0; bottom: 0; z-index: 3;
+    display: none; align-items: center; justify-content: center; flex-direction: column;
+    font-size: 1.5rem; font-weight: bold; color: #5f3dc4;
+    text-shadow: 1px 1px 0 #fff, -1px -1px 0 #fff;
+  }
+  #review-label small { font-size: .85rem; color: #6741d9; }
+  #battle-zone.review-mode #review-label { display: flex; }
+
+  #question {
+    background: #fff; border-radius: 24px; padding: 18px 10px; text-align: center;
+    font-size: 2.4rem; font-weight: bold; color: #333; letter-spacing: .06em;
+    box-shadow: 0 6px 16px rgba(60,120,200,.2); margin-bottom: 12px;
+  }
+  #question.pop { animation: qpop .3s ease; }
+  @keyframes qpop { 0% { transform: scale(.85); } 70% { transform: scale(1.05); } 100% { transform: scale(1); } }
+
+  #choices { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .choice-btn { background: #4dabf7; font-size: 1.7rem; min-height: 72px; border-radius: 18px; }
+  .choice-btn:nth-child(2) { background: #51cf66; }
+  .choice-btn:nth-child(3) { background: #ff922b; }
+  .choice-btn:nth-child(4) { background: #cc5de8; }
+
+  #numpad { display: none; }
+  #pad-display {
+    background: #fff; border-radius: 14px; text-align: center; font-size: 2rem;
+    font-weight: bold; min-height: 58px; line-height: 58px; margin-bottom: 10px; color: #2a7fbf;
+  }
+  #pad-keys { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+  .pad-btn { background: #74c0fc; font-size: 1.5rem; min-height: 60px; }
+  .pad-btn.pad-clear { background: #adb5bd; font-size: 1.1rem; }
+  .pad-btn.pad-ok { background: #ff6b35; font-size: 1.2rem; }
+
+  #feedback {
+    position: fixed; inset: 0; display: none; z-index: 40;
+    align-items: center; justify-content: center; flex-direction: column;
+    background: rgba(255,255,255,.6); text-align: center; padding: 20px;
+  }
+  #feedback.show { display: flex; }
+  #fb-main { font-size: 3.2rem; font-weight: bold; animation: fbpop .35s ease; text-shadow: 0 2px 10px rgba(255,255,255,.95); }
+  #fb-main.good { color: #f76707; }
+  #fb-main.bad { color: #4c6ef5; }
+  #fb-main.crit { color: #d6336c; }
+  @keyframes fbpop { 0% { transform: scale(.3); } 70% { transform: scale(1.15); } 100% { transform: scale(1); } }
+  #fb-sub { font-size: 1.3rem; font-weight: bold; color: #555; margin-top: 10px; text-shadow: 0 1px 6px rgba(255,255,255,.95); }
+  #fb-answer { font-size: 2.6rem; font-weight: bold; color: #e03131; margin-top: 8px; text-shadow: 0 2px 10px rgba(255,255,255,.95); }
+
+  #screen-result .panel, #screen-stageclear .panel { text-align: center; }
+  #result-score { font-size: 3rem; font-weight: bold; color: #ff6b35; }
+  #result-correct { font-size: 1.3rem; color: #2a7fbf; font-weight: bold; margin: 6px 0; }
+  #result-title {
+    font-size: 1.4rem; font-weight: bold; color: #862e9c;
+    background: #f3d9fa; border-radius: 14px; padding: 10px; margin: 10px 0;
+  }
+  #result-record { display: none; font-size: 1.2rem; color: #e8590c; font-weight: bold; animation: pulse 1s infinite; }
+  #result-record.show { display: block; }
+  #btn-retry { width: 100%; min-height: 62px; font-size: 1.3rem; background: linear-gradient(135deg, #ff922b, #ff6b35); margin-bottom: 10px; }
+  #btn-to-title { width: 100%; min-height: 56px; background: #4dabf7; }
+
+  #sc-title { font-size: 1.8rem; color: #e8590c; font-weight: bold; }
+  #sc-title rt { font-size: .6rem; }
+  #sc-score { font-size: 2.2rem; color: #ff6b35; font-weight: bold; margin: 8px 0; }
+  #sc-note { font-size: 1.05rem; color: #2a7fbf; font-weight: bold; margin-bottom: 4px; }
+  #btn-sc-next { width: 100%; min-height: 62px; font-size: 1.25rem; background: linear-gradient(135deg, #51cf66, #37b24d); }
+
+  .confetti {
+    position: fixed; top: -20px; width: 12px; height: 12px; z-index: 60;
+    animation: fall linear forwards; pointer-events: none;
+  }
+  @keyframes fall {
+    to { transform: translateY(110vh) rotate(720deg); opacity: .2; }
+  }
+
+  @media (max-width: 400px) {
+    #question { font-size: 2rem; padding: 15px 8px; }
+    .choice-btn { font-size: 1.4rem; }
+    #battle-zone { height: 160px; }
+    #hiscore-table { font-size: .78rem; }
+  }
+</style>
+</head>
+<body>
+<button id="btn-mute" aria-label="おとのオン・オフ">🔊</button>
+<div id="app">
+
+  <section id="screen-title" class="screen active">
+    <h1><ruby>算数<rt>さんすう</rt></ruby>クエスト</h1>
+    <p class="subtitle">けいさんで モンスターを やっつけよう！</p>
+
+    <div class="panel">
+      <h2>あそびかたを えらんでね</h2>
+      <div class="btn-grid">
+        <button class="play-btn" data-play="quest">🗺 クエスト<small>マップを すすんで ボスたいじ</small></button>
+        <button class="play-btn" data-play="quick">⚡ クイック<small>10もん しょうぶ</small></button>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h2>ゆうしゃを えらんでね</h2>
+      <div class="btn-grid">
+        <button class="hero-btn" data-hero="knight"><span class="hero-svg"></span>きし</button>
+        <button class="hero-btn" data-hero="wizard"><span class="hero-svg"></span>まほうつかい</button>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h2>モードを えらんでね</h2>
+      <div id="mode-buttons" class="btn-grid">
+        <button class="mode-btn" data-mode="add">＋ たしざん</button>
+        <button class="mode-btn" data-mode="sub">− ひきざん</button>
+        <button class="mode-btn" data-mode="mul">× かけざん</button>
+        <button class="mode-btn" data-mode="div">÷ わりざん</button>
+        <button class="mode-btn" data-mode="mix">★ ミックス（ぜんぶ）</button>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h2>レベルを えらんでね</h2>
+      <div id="level-buttons" class="btn-grid"></div>
+    </div>
+
+    <div class="panel">
+      <h2>こたえかたを えらんでね</h2>
+      <div class="btn-grid">
+        <button class="input-btn" data-input="choice">4たくから えらぶ</button>
+        <button class="input-btn" data-input="pad">すうじを うつ</button>
+      </div>
+    </div>
+
+    <button id="btn-start">🚀 スタート！</button>
+
+    <div class="panel">
+      <h2>ハイスコア（クイック）</h2>
+      <table id="hiscore-table"></table>
+      <button id="btn-erase">きろくを ぜんぶ けす</button>
+    </div>
+  </section>
+
+  <section id="screen-map" class="screen">
+    <h1>ぼうけんマップ</h1>
+    <p class="subtitle" id="map-info"></p>
+    <div class="panel">
+      <div id="map-board">
+        <svg id="map-path" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
+          <path d="M14 78 Q27 88 40 84 Q54 80 66 78 Q80 72 82 48 Q81 30 58 22"
+                fill="none" stroke="#ced4da" stroke-width="3" stroke-dasharray="4 3"
+                stroke-linecap="round" vector-effect="non-scaling-stroke"/>
+        </svg>
+        <span class="map-tag" style="left: 4%; top: 90%;">🚩スタート</span>
+        <span class="map-tag" style="left: 72%; top: 6%;">🏰ゴール</span>
+        <div id="map-nodes"></div>
+      </div>
+      <div id="map-total"></div>
+      <div id="map-clear-banner">🏆 ぜんぶ クリア！ おめでとう！！</div>
+    </div>
+    <button id="btn-map-start">⚔️ ステージ1を はじめる</button>
+    <button id="btn-map-back">タイトルに もどる</button>
+  </section>
+
+  <section id="screen-game" class="screen">
+    <div id="game-header">
+      <span class="hud" id="hud-progress">もんだい 1/10</span>
+      <span class="hud" id="hud-score">スコア 0</span>
+      <span class="hud" id="hud-combo"></span>
+      <button id="btn-quit">やめる</button>
+    </div>
+    <div id="stage-label"></div>
+    <div id="timer-wrap"><div id="timer-bar"></div></div>
+    <div id="battle-zone">
+      <div id="battle-banner"></div>
+      <div id="review-label">📖 ふくしゅうタイム<small>まちがえた もんだいに チャレンジ！</small></div>
+      <div id="speech"></div>
+      <div id="enemy-wrap">
+        <div id="enemy-hp"><div id="enemy-hp-fill"></div></div>
+        <div id="enemy-sprite"></div>
+      </div>
+      <div id="hero"></div>
+    </div>
+    <div id="question">1 ＋ 1 ＝ ？</div>
+    <div id="choices"></div>
+    <div id="numpad">
+      <div id="pad-display">&nbsp;</div>
+      <div id="pad-keys">
+        <button class="pad-btn" data-key="7">7</button>
+        <button class="pad-btn" data-key="8">8</button>
+        <button class="pad-btn" data-key="9">9</button>
+        <button class="pad-btn" data-key="4">4</button>
+        <button class="pad-btn" data-key="5">5</button>
+        <button class="pad-btn" data-key="6">6</button>
+        <button class="pad-btn" data-key="1">1</button>
+        <button class="pad-btn" data-key="2">2</button>
+        <button class="pad-btn" data-key="3">3</button>
+        <button class="pad-btn pad-clear" data-key="clear">けす</button>
+        <button class="pad-btn" data-key="0">0</button>
+        <button class="pad-btn pad-ok" data-key="ok">こたえる</button>
+      </div>
+    </div>
+  </section>
+
+  <section id="screen-stageclear" class="screen">
+    <h1>ステージクリア！</h1>
+    <div class="panel">
+      <div id="sc-title"></div>
+      <div id="sc-score"></div>
+      <div id="sc-note"></div>
+    </div>
+    <button id="btn-sc-next">🗺 マップに すすむ</button>
+  </section>
+
+  <section id="screen-result" class="screen">
+    <h1>けっか はっぴょう！</h1>
+    <div class="panel">
+      <div id="result-score">0てん</div>
+      <div id="result-correct">10もんちゅう 0もん せいかい</div>
+      <div id="result-title">称号</div>
+      <div id="result-record">🎉 しんきろく！ 🎉</div>
+    </div>
+    <button id="btn-retry">もういちど あそぶ</button>
+    <button id="btn-to-title">タイトルに もどる</button>
+  </section>
+
+</div>
+
+<div id="feedback">
+  <div id="fb-main"></div>
+  <div id="fb-sub"></div>
+  <div id="fb-answer"></div>
+</div>
+
+<script>
+/* ===LOGIC_START=== */
+var QUESTIONS_PER_GAME = 10;
+var STAGES_PER_MAP = 5;
+var CRIT_RATIO = 2 / 3;
+var ZAKO_HP = 10;
+var BOSS_HP = 30;
+var DMG_NORMAL = 10;
+var DMG_CRIT = 20;
+var REVIEW_BONUS = 50;
+
+var MODES = [
+  { id: 'add', label: 'たしざん', sym: '＋' },
+  { id: 'sub', label: 'ひきざん', sym: '−' },
+  { id: 'mul', label: 'かけざん', sym: '×' },
+  { id: 'div', label: 'わりざん', sym: '÷' },
+  { id: 'mix', label: 'ミックス', sym: '★' }
+];
+
+var LEVELS = [
+  { level: 0, label: 'にゅうもん', grade: 'ようちえん・1年生むけ' },
+  { level: 1, label: 'レベル1', grade: '1・2年生むけ' },
+  { level: 2, label: 'レベル2', grade: '2・3年生むけ' },
+  { level: 3, label: 'レベル3', grade: '3・4年生むけ' }
+];
+
+var STAGE_THEMES = [
+  { stage: 1, name: '草原の道', kana: 'そうげんのみち', zako: 'slime', zakoName: 'スライム', boss: 'kingslime', bossName: 'キングスライム', zakoColors: ['#69db7c', '#2f9e44'], zakoColors2: ['#74c0fc', '#1971c2'] },
+  { stage: 2, name: '森の小道', kana: 'もりのこみち', zako: 'mushroom', zakoName: 'キノコ', boss: 'treant', bossName: 'もりのぬし', zakoColors: ['#ff8787', '#e03131'], zakoColors2: ['#ffa94d', '#e8590c'] },
+  { stage: 3, name: '光る洞くつ', kana: 'ひかるどうくつ', zako: 'bat', zakoName: 'コウモリ', boss: 'golem', bossName: 'いわゴーレム', zakoColors: ['#9775fa', '#5f3dc4'], zakoColors2: ['#74c0fc', '#1971c2'] },
+  { stage: 4, name: '火山のふもと', kana: 'かざんのふもと', zako: 'ghost', zakoName: 'おばけ', boss: 'dragon', bossName: 'ドラゴン', zakoColors: ['#ffa94d', '#e8590c'], zakoColors2: ['#ff8787', '#c92a2a'] },
+  { stage: 5, name: '魔王城', kana: 'まおうじょう', zako: 'ghost', zakoName: 'おばけ', boss: 'maou', bossName: 'まおう', zakoColors: ['#b197fc', '#7048e8'], zakoColors2: ['#e599f7', '#9c36b5'] }
+];
+
+var ENEMY_LINES = {
+  appear: ['へへん！', 'つかまえて ごらん！', 'まけないぞ〜！'],
+  bossAppear: ['ガオー！ おれさまが あいてだ！', 'よくきたな！ しょうぶだ！'],
+  dodge: ['おっとっと！', 'ひらりん！', 'あぶなかった〜！'],
+  defeat: ['まいった〜！', 'やられた〜！', 'つよいなあ〜！'],
+  bossDefeat: ['まいった！ おぬし つよい！', 'ぐぬぬ… また あおう！']
+};
+
+function enemyLine(kind, rnd) {
+  var list = ENEMY_LINES[kind];
+  return list[Math.floor(rnd() * list.length)];
+}
+
+function ri(rnd, min, max) {
+  return min + Math.floor(rnd() * (max - min + 1));
+}
+
+function applyOp(op, a, b) {
+  if (op === 'add') return a + b;
+  if (op === 'sub') return a - b;
+  if (op === 'mul') return a * b;
+  return a / b;
+}
+
+function clamp01(x) {
+  return Math.max(0, Math.min(1, x));
+}
+
+function growHi(lo, hi, g) {
+  return lo + Math.round(clamp01(g) * (hi - lo));
+}
+
+function stageGrowth(stage) {
+  return clamp01((stage - 1) / (STAGES_PER_MAP - 1));
+}
+
+function levelAllowsMode(level, mode) {
+  if (level === 0) return mode === 'add' || mode === 'sub' || mode === 'mix';
+  return true;
+}
+
+function genProblem(mode, level, rnd, growth) {
+  var g = growth === undefined ? 1 : clamp01(growth);
+  var op;
+  if (mode === 'mix') {
+    var pool = level === 0 ? ['add', 'sub'] : ['add', 'sub', 'mul', 'div'];
+    op = pool[Math.floor(rnd() * pool.length)];
+  } else if (level === 0 && mode === 'mul') {
+    op = 'add';
+  } else if (level === 0 && mode === 'div') {
+    op = 'sub';
+  } else {
+    op = mode;
+  }
+  var a, b, q, t, hi;
+  if (op === 'add') {
+    if (level === 0) { hi = growHi(5, 10, g); a = ri(rnd, 0, hi); b = ri(rnd, a === 0 ? 1 : 0, hi - a); }
+    else if (level === 1) { hi = growHi(5, 9, g); a = ri(rnd, 1, hi); b = ri(rnd, 1, hi); }
+    else if (level === 2) { hi = growHi(40, 99, g); a = ri(rnd, 10, hi); b = ri(rnd, 1, 9); }
+    else { hi = growHi(40, 99, g); a = ri(rnd, 10, hi); b = ri(rnd, 10, hi); }
+  } else if (op === 'sub') {
+    if (level === 0) { hi = growHi(5, 10, g); a = ri(rnd, 1, hi); b = ri(rnd, 0, a); }
+    else if (level === 1) { hi = growHi(5, 9, g); a = ri(rnd, 1, hi); b = ri(rnd, 1, hi); }
+    else if (level === 2) { hi = growHi(40, 99, g); a = ri(rnd, 10, hi); b = ri(rnd, 1, 9); }
+    else { hi = growHi(40, 99, g); a = ri(rnd, 10, hi); b = ri(rnd, 10, hi); }
+    if (b > a) { t = a; a = b; b = t; }
+  } else if (op === 'mul') {
+    if (level === 1) { a = ri(rnd, 1, growHi(3, 5, g)); b = ri(rnd, 1, growHi(5, 9, g)); }
+    else if (level === 2) { hi = growHi(5, 9, g); a = ri(rnd, 1, hi); b = ri(rnd, 1, hi); }
+    else { a = ri(rnd, 10, growHi(40, 99, g)); b = ri(rnd, 2, 9); }
+  } else {
+    if (level === 1) { b = ri(rnd, 2, 5); q = ri(rnd, 1, growHi(5, 9, g)); }
+    else if (level === 2) { b = ri(rnd, 2, 9); q = ri(rnd, 1, growHi(5, 9, g)); }
+    else { b = ri(rnd, 2, 9); q = ri(rnd, 10, growHi(40, 99, g)); }
+    a = b * q;
+  }
+  return { op: op, a: a, b: b, answer: applyOp(op, a, b) };
+}
+
+function nyuumonAddSeq(stage) {
+  var a = Math.floor((stage - 1) / 2) + 1;
+  var list = [];
+  var i;
+  if (stage % 2 === 1) {
+    for (i = 1; i <= 5; i++) list.push({ op: 'add', a: a, b: i, answer: a + i });
+  } else {
+    for (i = 10 - a; i >= 6 - a; i--) list.push({ op: 'add', a: a, b: i, answer: a + i });
+  }
+  return list;
+}
+
+function nyuumonSubSeq(stage) {
+  var flat = [];
+  for (var mnd = 2; mnd <= 10; mnd++) {
+    for (var k = 1; k < mnd; k++) flat.push({ op: 'sub', a: mnd, b: k, answer: mnd - k });
+  }
+  var start = (stage - 1) * 5;
+  var chunk = flat.slice(start, start + 5);
+  if (stage % 2 === 0) chunk.reverse();
+  return chunk;
+}
+
+function nyuumonStageSeq(mode, stage) {
+  if (mode === 'sub') return nyuumonSubSeq(stage);
+  if (mode === 'mix') return stage % 2 === 1 ? nyuumonAddSeq((stage + 1) / 2) : nyuumonSubSeq(stage / 2);
+  return nyuumonAddSeq(stage);
+}
+
+function nyuumonSeqProblem(mode, stage, index) {
+  var list = nyuumonStageSeq(mode, stage);
+  var i = ((index % list.length) + list.length) % list.length;
+  return list[i];
+}
+
+function problemKey(p) {
+  return p.op + '-' + p.a + '-' + p.b;
+}
+
+function addToReview(queue, problem) {
+  for (var i = 0; i < queue.length; i++) {
+    if (problemKey(queue[i]) === problemKey(problem)) return queue;
+  }
+  return queue.concat([{ op: problem.op, a: problem.a, b: problem.b, answer: problem.answer }]);
+}
+
+function makeChoices(answer, rnd) {
+  var deltas = [1, -1, 2, -2, 3, -3, 10, -10, 20, -20, 5, -5, 11, -11, 9, -9];
+  var set = [answer];
+  var guard = 0;
+  while (set.length < 4) {
+    guard++;
+    var cand;
+    if (guard > 200) {
+      cand = answer + guard;
+    } else if (guard > 40) {
+      cand = answer + ri(rnd, 1, 30) * (rnd() < 0.5 ? -1 : 1);
+    } else {
+      cand = answer + deltas[Math.floor(rnd() * deltas.length)];
+    }
+    if (Number.isInteger(cand) && cand >= 0 && set.indexOf(cand) === -1) set.push(cand);
+  }
+  for (var j = set.length - 1; j > 0; j--) {
+    var k = Math.floor(rnd() * (j + 1));
+    var tmp = set[j]; set[j] = set[k]; set[k] = tmp;
+  }
+  return set;
+}
+
+function calcScore(timeLeftRatio, combo) {
+  var r = Math.max(0, Math.min(1, timeLeftRatio));
+  return 100 + Math.round(r * 100) + Math.min(combo, 10) * 10;
+}
+
+function getTitle(correct) {
+  if (correct >= 10) return 'でんせつの さんすうマスター';
+  if (correct >= 8) return 'きらめく けいさんはかせ';
+  if (correct >= 6) return 'がんばりやの ゆうしゃ';
+  if (correct >= 4) return 'みならい ぼうけんしゃ';
+  if (correct >= 1) return 'かけだしの たまご';
+  return 'これからの ぼうけんしゃ';
+}
+
+function scoreTitle(score) {
+  if (score >= 4900) return 'でんせつ';
+  if (score >= 4300) return 'えいゆう';
+  if (score >= 3700) return 'ゆうしゃ';
+  if (score >= 3100) return 'けんし';
+  return 'みならい';
+}
+
+function cheerMessage(combo) {
+  if (combo >= 10) return 'でんせつ！';
+  if (combo >= 7) return 'むてき！';
+  if (combo >= 5) return 'てんさい！';
+  if (combo >= 3) return 'すごい！';
+  if (combo >= 2) return 'いいね！';
+  return '';
+}
+
+function timeLimitSec(level) {
+  if (level === 0) return 15;
+  if (level === 1) return 12;
+  if (level === 2) return 16;
+  return 20;
+}
+
+function isCritical(timeLeftRatio) {
+  return timeLeftRatio >= CRIT_RATIO;
+}
+
+function hitDamage(critical) {
+  return critical ? DMG_CRIT : DMG_NORMAL;
+}
+
+function attackStyle(mode, level) {
+  if (level === 0 || mode === 'mix') return 'star';
+  if (mode === 'mul' || mode === 'div') return 'magic';
+  return 'sword';
+}
+
+function enemyPeriodSec(inputActive) {
+  return inputActive ? 1 : 2;
+}
+
+function makeStagePlan(stage) {
+  return [
+    { kind: 'zako', maxHp: ZAKO_HP },
+    { kind: 'zako', maxHp: ZAKO_HP },
+    { kind: 'boss', maxHp: BOSS_HP }
+  ];
+}
+
+function createBattle(stage) {
+  var plan = makeStagePlan(stage);
+  return { stage: stage, plan: plan, enemyIndex: 0, hp: plan[0].maxHp, defeated: 0 };
+}
+
+function applyHit(battle, damage) {
+  var hp = Math.max(0, battle.hp - damage);
+  var defeated = hp === 0;
+  var wasBoss = battle.plan[battle.enemyIndex].kind === 'boss';
+  var nextIndex = defeated ? battle.enemyIndex + 1 : battle.enemyIndex;
+  var stageClear = nextIndex >= battle.plan.length;
+  return {
+    battle: {
+      stage: battle.stage,
+      plan: battle.plan,
+      enemyIndex: stageClear ? battle.enemyIndex : nextIndex,
+      hp: defeated ? (stageClear ? 0 : battle.plan[nextIndex].maxHp) : hp,
+      defeated: battle.defeated + (defeated ? 1 : 0)
+    },
+    defeated: defeated,
+    stageClear: stageClear,
+    wasBoss: wasBoss
+  };
+}
+
+function questKey(mode, level) {
+  return mode + '-' + level;
+}
+
+function defaultQuestEntry() {
+  return { cleared: 0, score: 0, best: 0, miss: 0 };
+}
+
+function recordStageClear(entry, stage, stageScore, misses) {
+  var e = { cleared: entry.cleared, score: entry.score, best: entry.best, miss: entry.miss };
+  if (stage !== e.cleared + 1 || stage < 1 || stage > STAGES_PER_MAP) return e;
+  e.cleared = stage;
+  e.score += Math.max(0, Math.floor(stageScore) || 0);
+  e.miss += Math.max(0, Math.floor(misses) || 0);
+  if (e.cleared === STAGES_PER_MAP && e.score > e.best) e.best = e.score;
+  return e;
+}
+
+function isMapClear(entry) {
+  return entry.cleared >= STAGES_PER_MAP;
+}
+
+function resetQuestEntry(entry) {
+  return { cleared: 0, score: 0, best: entry.best, miss: 0 };
+}
+
+function normalizeSaveData(d) {
+  var out = { hs: {}, muted: false, input: 'choice', play: 'quest', hero: 'knight', quest: {} };
+  if (!d || typeof d !== 'object' || Array.isArray(d)) return out;
+  if (d.hs && typeof d.hs === 'object' && !Array.isArray(d.hs)) {
+    Object.keys(d.hs).forEach(function (k) {
+      if (typeof d.hs[k] === 'number' && isFinite(d.hs[k]) && d.hs[k] > 0) out.hs[k] = Math.floor(d.hs[k]);
+    });
+  }
+  out.muted = d.muted === true;
+  out.input = d.input === 'pad' ? 'pad' : 'choice';
+  out.play = d.play === 'quick' ? 'quick' : 'quest';
+  out.hero = d.hero === 'wizard' ? 'wizard' : 'knight';
+  if (d.quest && typeof d.quest === 'object' && !Array.isArray(d.quest)) {
+    Object.keys(d.quest).forEach(function (k) {
+      var e = d.quest[k];
+      if (!e || typeof e !== 'object') return;
+      var num = function (v, cap) {
+        if (typeof v !== 'number' || !isFinite(v)) return 0;
+        var n = Math.floor(v);
+        if (n < 0) return 0;
+        return cap === undefined ? n : Math.min(cap, n);
+      };
+      var entry = { cleared: num(e.cleared, STAGES_PER_MAP), score: num(e.score), best: num(e.best), miss: num(e.miss) };
+      if (entry.cleared > 0 || entry.score > 0 || entry.best > 0) out.quest[k] = entry;
+    });
+  }
+  return out;
+}
+/* ===LOGIC_END=== */
+
+(function () {
+  'use strict';
+
+  var STORAGE_KEY = 'sansu_quest_v1';
+  var OP_SYM = { add: '＋', sub: '−', mul: '×', div: '÷' };
+
+  function loadData() {
+    var parsed = null;
+    try {
+      var raw = localStorage.getItem(STORAGE_KEY);
+      if (raw) parsed = JSON.parse(raw);
+    } catch (e) { parsed = null; }
+    return normalizeSaveData(parsed);
+  }
+  function saveData() {
+    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(data)); } catch (e) { /* 保存不可でも遊べる */ }
+  }
+  var data = loadData();
+
+  var state = {
+    play: data.play, mode: 'add', level: 1, input: data.input,
+    qNum: 0, score: 0, correct: 0, combo: 0,
+    problem: null, answered: true, playing: false, gameId: 0,
+    deadline: 0, limitMs: 0, rafId: 0, padValue: '',
+    stage: 0, growth: 1, battle: null, isBoss: false, stageMiss: 0,
+    dispHp: 1, dispMax: 1, seqIndex: 0, inputActive: false,
+    phase: 'battle', reviewQueue: [], reviewIndex: 0
+  };
+
+  var $ = function (id) { return document.getElementById(id); };
+  var screens = {
+    title: $('screen-title'), map: $('screen-map'), game: $('screen-game'),
+    stageclear: $('screen-stageclear'), result: $('screen-result')
+  };
+
+  function showScreen(name) {
+    Object.keys(screens).forEach(function (k) { screens[k].classList.toggle('active', k === name); });
+  }
+
+  var audioCtx = null;
+  function unlockAudio() {
+    try {
+      if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      if (audioCtx.state === 'suspended') audioCtx.resume();
+    } catch (e) { /* 音が出なくても遊べる */ }
+  }
+  document.addEventListener('pointerdown', unlockAudio, true);
+  document.addEventListener('touchend', unlockAudio, true);
+
+  function beep(freq, durSec, delaySec, type, gainVal) {
+    if (data.muted) return;
+    try {
+      if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      var t0 = audioCtx.currentTime + (delaySec || 0);
+      var osc = audioCtx.createOscillator();
+      var gain = audioCtx.createGain();
+      osc.type = type || 'triangle';
+      osc.frequency.value = freq;
+      gain.gain.setValueAtTime(gainVal || 0.15, t0);
+      gain.gain.exponentialRampToValueAtTime(0.001, t0 + durSec);
+      osc.connect(gain).connect(audioCtx.destination);
+      osc.start(t0);
+      osc.stop(t0 + durSec + 0.05);
+    } catch (e) { /* 音が出なくても続行 */ }
+  }
+  function sweep(f0, f1, durSec, delaySec, type, gainVal) {
+    if (data.muted) return;
+    try {
+      if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      var t0 = audioCtx.currentTime + (delaySec || 0);
+      var osc = audioCtx.createOscillator();
+      var gain = audioCtx.createGain();
+      osc.type = type || 'square';
+      osc.frequency.setValueAtTime(Math.max(1, f0), t0);
+      osc.frequency.exponentialRampToValueAtTime(Math.max(1, f1), t0 + durSec);
+      gain.gain.setValueAtTime(gainVal || 0.12, t0);
+      gain.gain.exponentialRampToValueAtTime(0.001, t0 + durSec);
+      osc.connect(gain).connect(audioCtx.destination);
+      osc.start(t0);
+      osc.stop(t0 + durSec + 0.05);
+    } catch (e) { /* 音が出なくても続行 */ }
+  }
+  function soundCorrect() { beep(660, 0.12, 0); beep(880, 0.2, 0.1); }
+  function soundWrong() { beep(196, 0.3, 0, 'square', 0.08); }
+  function soundFanfare() {
+    [523, 659, 784, 1047].forEach(function (f, i) { beep(f, 0.25, i * 0.15); });
+  }
+  function soundHit() { sweep(700, 180, 0.12, 0, 'square', 0.1); }
+  function soundCritical() { sweep(500, 1400, 0.16, 0, 'square', 0.12); beep(1760, 0.14, 0.1, 'triangle', 0.12); }
+  function soundDefeat() { sweep(420, 50, 0.45, 0, 'sawtooth', 0.13); beep(880, 0.08, 0.02); beep(660, 0.08, 0.1); }
+  function soundBossAppear() { beep(98, 0.3, 0, 'sawtooth', 0.13); beep(92, 0.3, 0.26, 'sawtooth', 0.13); sweep(200, 70, 0.45, 0.52, 'sawtooth', 0.11); }
+  function soundBossDefeat() {
+    soundDefeat();
+    [523, 659, 784, 1047].forEach(function (f, i) { beep(f, 0.22, 0.35 + i * 0.12); });
+  }
+
+  function buzz(pattern) {
+    try { if (navigator.vibrate) navigator.vibrate(pattern); } catch (e) { /* 非対応端末でも続行 */ }
+  }
+
+  function updateMuteButton() {
+    $('btn-mute').textContent = data.muted ? '🔇' : '🔊';
+  }
+  $('btn-mute').addEventListener('click', function () {
+    data.muted = !data.muted;
+    saveData();
+    updateMuteButton();
+    if (!data.muted) beep(660, 0.1, 0);
+  });
+
+  function svgSlime(c1, c2) {
+    return '<svg viewBox="0 0 100 100" aria-hidden="true">' +
+      '<path d="M50 14 C74 14 88 36 88 58 C88 80 72 88 50 88 C28 88 12 80 12 58 C12 36 26 14 50 14 Z" fill="' + c1 + '" stroke="' + c2 + '" stroke-width="3"/>' +
+      '<ellipse cx="30" cy="32" rx="9" ry="5" fill="#ffffff" opacity=".45" transform="rotate(-25 30 32)"/>' +
+      '<ellipse cx="38" cy="52" rx="7" ry="9" fill="#fff"/><circle cx="39" cy="54" r="3.4" fill="#212529"/>' +
+      '<ellipse cx="62" cy="52" rx="7" ry="9" fill="#fff"/><circle cx="61" cy="54" r="3.4" fill="#212529"/>' +
+      '<path d="M38 68 Q50 78 62 68" stroke="#212529" stroke-width="3.5" fill="none" stroke-linecap="round"/>' +
+      '</svg>';
+  }
+  function svgMushroom(c1, c2) {
+    return '<svg viewBox="0 0 100 100" aria-hidden="true">' +
+      '<path d="M50 12 C74 12 88 30 88 44 Q88 52 78 52 L22 52 Q12 52 12 44 C12 30 26 12 50 12 Z" fill="' + c1 + '" stroke="' + c2 + '" stroke-width="3"/>' +
+      '<circle cx="34" cy="30" r="6" fill="#fff" opacity=".85"/><circle cx="58" cy="24" r="7" fill="#fff" opacity=".85"/><circle cx="72" cy="36" r="5" fill="#fff" opacity=".85"/>' +
+      '<path d="M34 52 Q32 84 50 84 Q68 84 66 52 Z" fill="#ffe8cc" stroke="#d9a066" stroke-width="3"/>' +
+      '<circle cx="44" cy="64" r="3" fill="#212529"/><circle cx="56" cy="64" r="3" fill="#212529"/>' +
+      '<path d="M45 72 Q50 76 55 72" stroke="#212529" stroke-width="2.5" fill="none" stroke-linecap="round"/>' +
+      '<circle cx="38" cy="68" r="3" fill="#ffc9c9" opacity=".8"/><circle cx="62" cy="68" r="3" fill="#ffc9c9" opacity=".8"/>' +
+      '</svg>';
+  }
+  function svgBat(c1, c2) {
+    return '<svg viewBox="0 0 100 100" aria-hidden="true">' +
+      '<path d="M6 46 Q16 28 34 36 Q26 44 32 56 Q16 56 6 46 Z" fill="' + c2 + '"/>' +
+      '<path d="M94 46 Q84 28 66 36 Q74 44 68 56 Q84 56 94 46 Z" fill="' + c2 + '"/>' +
+      '<path d="M36 24 L44 38 L30 38 Z" fill="' + c1 + '"/><path d="M64 24 L70 38 L56 38 Z" fill="' + c1 + '"/>' +
+      '<circle cx="50" cy="56" r="24" fill="' + c1 + '" stroke="' + c2 + '" stroke-width="3"/>' +
+      '<circle cx="41" cy="52" r="5.5" fill="#fff"/><circle cx="42" cy="53" r="2.6" fill="#212529"/>' +
+      '<circle cx="59" cy="52" r="5.5" fill="#fff"/><circle cx="58" cy="53" r="2.6" fill="#212529"/>' +
+      '<path d="M42 68 Q46 64 50 68 Q54 64 58 68" stroke="#212529" stroke-width="3" fill="none" stroke-linecap="round"/>' +
+      '<path d="M45 69 L47 75 L49 69 Z" fill="#fff"/><path d="M51 69 L53 75 L55 69 Z" fill="#fff"/>' +
+      '</svg>';
+  }
+  function svgGhost(c1, c2) {
+    return '<svg viewBox="0 0 100 100" aria-hidden="true">' +
+      '<path d="M50 10 C71 10 84 27 84 48 L84 86 L73 76 L61 88 L50 78 L39 88 L27 76 L16 86 L16 48 C16 27 29 10 50 10 Z" fill="' + c1 + '" stroke="' + c2 + '" stroke-width="3"/>' +
+      '<circle cx="38" cy="46" r="6" fill="#212529"/><circle cx="62" cy="46" r="6" fill="#212529"/>' +
+      '<circle cx="36.5" cy="44" r="2" fill="#fff"/><circle cx="60.5" cy="44" r="2" fill="#fff"/>' +
+      '<ellipse cx="50" cy="63" rx="6" ry="8" fill="#212529"/>' +
+      '<circle cx="27" cy="57" r="5" fill="#ffc9c9" opacity=".8"/><circle cx="73" cy="57" r="5" fill="#ffc9c9" opacity=".8"/>' +
+      '</svg>';
+  }
+  function svgKingSlime() {
+    return '<svg viewBox="0 0 120 120" aria-hidden="true">' +
+      '<path d="M60 24 C88 24 104 48 104 72 C104 96 84 108 60 108 C36 108 16 96 16 72 C16 48 32 24 60 24 Z" fill="#74c0fc" stroke="#1971c2" stroke-width="4"/>' +
+      '<path d="M38 24 L46 8 L54 20 L60 6 L66 20 L74 8 L82 24 Q60 32 38 24 Z" fill="#ffd43b" stroke="#e8590c" stroke-width="2.5"/>' +
+      '<circle cx="46" cy="14" r="2.5" fill="#fa5252"/><circle cx="60" cy="12" r="2.5" fill="#12b886"/><circle cx="74" cy="14" r="2.5" fill="#4263eb"/>' +
+      '<ellipse cx="36" cy="44" rx="10" ry="6" fill="#ffffff" opacity=".45" transform="rotate(-25 36 44)"/>' +
+      '<ellipse cx="46" cy="64" rx="8" ry="10" fill="#fff"/><circle cx="47" cy="66" r="4" fill="#212529"/>' +
+      '<ellipse cx="74" cy="64" rx="8" ry="10" fill="#fff"/><circle cx="73" cy="66" r="4" fill="#212529"/>' +
+      '<path d="M44 84 Q60 96 76 84" stroke="#212529" stroke-width="4" fill="none" stroke-linecap="round"/>' +
+      '</svg>';
+  }
+  function svgTreant() {
+    return '<svg viewBox="0 0 120 120" aria-hidden="true">' +
+      '<circle cx="36" cy="34" r="20" fill="#51cf66"/><circle cx="60" cy="22" r="22" fill="#40c057"/><circle cx="86" cy="34" r="20" fill="#51cf66"/>' +
+      '<circle cx="48" cy="40" r="16" fill="#69db7c"/><circle cx="74" cy="40" r="16" fill="#69db7c"/>' +
+      '<rect x="42" y="46" width="36" height="58" rx="10" fill="#a9743f" stroke="#7f5539" stroke-width="4"/>' +
+      '<path d="M42 72 Q26 76 20 66" stroke="#7f5539" stroke-width="9" fill="none" stroke-linecap="round"/>' +
+      '<path d="M78 72 Q94 76 100 66" stroke="#7f5539" stroke-width="9" fill="none" stroke-linecap="round"/>' +
+      '<circle cx="52" cy="68" r="4.5" fill="#212529"/><circle cx="68" cy="68" r="4.5" fill="#212529"/>' +
+      '<path d="M50 84 Q60 92 70 84" stroke="#212529" stroke-width="4" fill="none" stroke-linecap="round"/>' +
+      '</svg>';
+  }
+  function svgGolem() {
+    return '<svg viewBox="0 0 120 120" aria-hidden="true">' +
+      '<rect x="12" y="52" width="22" height="36" rx="9" fill="#868e96" stroke="#495057" stroke-width="4"/>' +
+      '<rect x="86" y="52" width="22" height="36" rx="9" fill="#868e96" stroke="#495057" stroke-width="4"/>' +
+      '<rect x="30" y="42" width="60" height="56" rx="14" fill="#adb5bd" stroke="#495057" stroke-width="4"/>' +
+      '<rect x="38" y="12" width="44" height="36" rx="10" fill="#ced4da" stroke="#495057" stroke-width="4"/>' +
+      '<circle cx="52" cy="28" r="5.5" fill="#fab005"/><circle cx="68" cy="28" r="5.5" fill="#fab005"/>' +
+      '<rect x="52" y="38" width="16" height="4" rx="2" fill="#495057"/>' +
+      '<path d="M42 60 L54 68 M66 68 L78 60" stroke="#495057" stroke-width="3.5" fill="none" stroke-linecap="round"/>' +
+      '<rect x="38" y="98" width="16" height="14" rx="5" fill="#868e96" stroke="#495057" stroke-width="3"/>' +
+      '<rect x="66" y="98" width="16" height="14" rx="5" fill="#868e96" stroke="#495057" stroke-width="3"/>' +
+      '</svg>';
+  }
+  function svgDragon() {
+    var c1 = '#ff8787', c2 = '#c92a2a';
+    return '<svg viewBox="0 0 120 120" aria-hidden="true">' +
+      '<path d="M14 62 Q0 46 10 28 Q28 34 32 50 Z" fill="' + c2 + '"/>' +
+      '<path d="M106 62 Q120 46 110 28 Q92 34 88 50 Z" fill="' + c2 + '"/>' +
+      '<path d="M86 94 Q108 88 104 68 L114 62 Q120 96 92 104 Z" fill="' + c1 + '" stroke="' + c2 + '" stroke-width="3"/>' +
+      '<ellipse cx="60" cy="80" rx="30" ry="26" fill="' + c1 + '" stroke="' + c2 + '" stroke-width="3.5"/>' +
+      '<ellipse cx="60" cy="86" rx="18" ry="16" fill="#ffffff" opacity=".55"/>' +
+      '<path d="M40 16 L47 32 L33 32 Z" fill="#ffe066"/><path d="M80 16 L87 32 L73 32 Z" fill="#ffe066"/>' +
+      '<circle cx="60" cy="40" r="24" fill="' + c1 + '" stroke="' + c2 + '" stroke-width="3.5"/>' +
+      '<path d="M42 30 L54 34" stroke="#212529" stroke-width="3" stroke-linecap="round"/>' +
+      '<path d="M78 30 L66 34" stroke="#212529" stroke-width="3" stroke-linecap="round"/>' +
+      '<circle cx="50" cy="40" r="5" fill="#fff"/><circle cx="51" cy="41" r="2.6" fill="#212529"/>' +
+      '<circle cx="70" cy="40" r="5" fill="#fff"/><circle cx="69" cy="41" r="2.6" fill="#212529"/>' +
+      '<circle cx="55" cy="52" r="2" fill="#212529"/><circle cx="65" cy="52" r="2" fill="#212529"/>' +
+      '<path d="M50 58 L54 64 L58 58 Z" fill="#fff"/><path d="M62 58 L66 64 L70 58 Z" fill="#fff"/>' +
+      '</svg>';
+  }
+  function svgMaou() {
+    return '<svg viewBox="0 0 120 120" aria-hidden="true">' +
+      '<path d="M24 48 Q8 92 28 108 L60 96 L92 108 Q112 92 96 48 Z" fill="#5f3dc4" stroke="#41288f" stroke-width="4"/>' +
+      '<ellipse cx="60" cy="76" rx="26" ry="24" fill="#845ef7" stroke="#41288f" stroke-width="4"/>' +
+      '<ellipse cx="60" cy="82" rx="14" ry="12" fill="#d0bfff" opacity=".6"/>' +
+      '<path d="M40 10 L48 28 L34 26 Z" fill="#ffd43b"/><path d="M80 10 L86 26 L72 28 Z" fill="#ffd43b"/>' +
+      '<circle cx="60" cy="38" r="22" fill="#9775fa" stroke="#41288f" stroke-width="4"/>' +
+      '<path d="M44 32 L54 38" stroke="#212529" stroke-width="3.5" stroke-linecap="round"/>' +
+      '<path d="M76 32 L66 38" stroke="#212529" stroke-width="3.5" stroke-linecap="round"/>' +
+      '<circle cx="50" cy="42" r="4.5" fill="#ff3b3b"/><circle cx="49" cy="41" r="1.6" fill="#fff"/>' +
+      '<circle cx="70" cy="42" r="4.5" fill="#ff3b3b"/><circle cx="69" cy="41" r="1.6" fill="#fff"/>' +
+      '<path d="M48 52 Q60 60 72 52" stroke="#212529" stroke-width="3.5" fill="none" stroke-linecap="round"/>' +
+      '<path d="M50 53 L53 58 L56 53 Z" fill="#fff"/><path d="M64 53 L67 58 L70 53 Z" fill="#fff"/>' +
+      '</svg>';
+  }
+  function svgKnight() {
+    return '<svg viewBox="0 0 100 100" aria-hidden="true">' +
+      '<rect x="70" y="20" width="5" height="36" rx="2" fill="#ced4da" stroke="#868e96" stroke-width="1"/>' +
+      '<rect x="63" y="54" width="19" height="5" rx="2" fill="#c98f3d"/>' +
+      '<rect x="48" y="8" width="4" height="12" rx="2" fill="#fa5252"/>' +
+      '<circle cx="50" cy="34" r="13" fill="#ffd8a8"/>' +
+      '<path d="M37 30 A13 13 0 0 1 63 30 L63 26 Q50 16 37 26 Z" fill="#868e96"/>' +
+      '<circle cx="45" cy="35" r="2.2" fill="#212529"/><circle cx="55" cy="35" r="2.2" fill="#212529"/>' +
+      '<path d="M46 41 Q50 44 54 41" stroke="#212529" stroke-width="2" fill="none" stroke-linecap="round"/>' +
+      '<rect x="38" y="48" width="24" height="26" rx="7" fill="#4dabf7" stroke="#1971c2" stroke-width="2.5"/>' +
+      '<circle cx="29" cy="60" r="11" fill="#ffd43b" stroke="#e8590c" stroke-width="3"/>' +
+      '<rect x="41" y="74" width="7" height="12" rx="3" fill="#495057"/><rect x="52" y="74" width="7" height="12" rx="3" fill="#495057"/>' +
+      '</svg>';
+  }
+  function svgWizard() {
+    return '<svg viewBox="0 0 100 100" aria-hidden="true">' +
+      '<rect x="73" y="20" width="5" height="52" rx="2" fill="#c98f3d"/>' +
+      '<circle cx="75.5" cy="16" r="7" fill="#ffd43b" stroke="#e8590c" stroke-width="2"/>' +
+      '<circle cx="48" cy="36" r="13" fill="#ffd8a8"/>' +
+      '<path d="M48 2 L67 30 L29 30 Z" fill="#845ef7" stroke="#5f3dc4" stroke-width="2.5"/>' +
+      '<circle cx="48" cy="20" r="3.5" fill="#ffd43b"/>' +
+      '<circle cx="43" cy="38" r="2.2" fill="#212529"/><circle cx="53" cy="38" r="2.2" fill="#212529"/>' +
+      '<path d="M44 44 Q48 47 52 44" stroke="#212529" stroke-width="2" fill="none" stroke-linecap="round"/>' +
+      '<path d="M32 86 L48 48 L64 86 Z" fill="#9775fa" stroke="#5f3dc4" stroke-width="2.5"/>' +
+      '</svg>';
+  }
+
+  var ZAKO_SVGS = { slime: svgSlime, mushroom: svgMushroom, bat: svgBat, ghost: svgGhost };
+  var BOSS_SVGS = { kingslime: svgKingSlime, treant: svgTreant, golem: svgGolem, dragon: svgDragon, maou: svgMaou };
+  var ZAKO_NAMES = { slime: 'スライム', mushroom: 'キノコ', bat: 'コウモリ', ghost: 'おばけ' };
+  var QUICK_COLOR_POOL = [
+    ['#69db7c', '#2f9e44'], ['#74c0fc', '#1971c2'], ['#ffa94d', '#e8590c'],
+    ['#e599f7', '#9c36b5'], ['#ff8787', '#e03131'], ['#9775fa', '#5f3dc4']
+  ];
+  var FX_COLORS = {
+    sword: ['#e9ecef', '#ffd43b', '#ffffff'],
+    magic: ['#b197fc', '#845ef7', '#ffffff'],
+    star: ['#ffd43b', '#ff8787', '#ffffff']
+  };
+
+  function heroSvg() {
+    return data.hero === 'wizard' ? svgWizard() : svgKnight();
+  }
+  function renderHero() {
+    $('hero').innerHTML = heroSvg();
+    document.querySelectorAll('.hero-btn .hero-svg').forEach(function (el) {
+      el.innerHTML = el.parentNode.dataset.hero === 'wizard' ? svgWizard() : svgKnight();
+    });
+  }
+
+  var fx = { moving: false, raf: 0, osc: 0, lastTs: 0 };
+  var bannerTimer = 0;
+  var speechTimer = 0;
+
+  function addOnce(el, cls) {
+    el.classList.remove(cls);
+    void el.offsetWidth;
+    el.classList.add(cls);
+  }
+
+  function showBanner(html, ms) {
+    var b = $('battle-banner');
+    b.innerHTML = html;
+    b.classList.add('show');
+    clearTimeout(bannerTimer);
+    bannerTimer = setTimeout(function () { b.classList.remove('show'); }, ms);
+  }
+
+  function showSpeech(text, ms) {
+    var s = $('speech');
+    var zone = $('battle-zone');
+    var zr = zone.getBoundingClientRect();
+    var er = $('enemy-wrap').getBoundingClientRect();
+    var x = er.left - zr.left + er.width / 2;
+    x = Math.max(56, Math.min(zr.width - 56, x));
+    s.textContent = text;
+    s.style.left = x + 'px';
+    s.classList.add('show');
+    clearTimeout(speechTimer);
+    speechTimer = setTimeout(function () { s.classList.remove('show'); }, ms);
+  }
+
+  function enemyLoop(ts) {
+    if (!fx.moving) { fx.raf = 0; fx.lastTs = 0; return; }
+    if (!fx.lastTs) fx.lastTs = ts;
+    var dt = Math.min(0.1, (ts - fx.lastTs) / 1000);
+    fx.lastTs = ts;
+    fx.osc += dt * (Math.PI * 2 / enemyPeriodSec(state.inputActive));
+    var zone = $('battle-zone');
+    var half = zone.clientWidth / 2;
+    var margin = state.isBoss ? 76 : 56;
+    var amp = Math.max(16, half - margin);
+    var x = amp * Math.sin(fx.osc);
+    var bob = 4 * Math.sin(fx.osc * 1.7);
+    $('enemy-wrap').style.transform = 'translate(' + x.toFixed(1) + 'px,' + bob.toFixed(1) + 'px)';
+    fx.raf = requestAnimationFrame(enemyLoop);
+  }
+  function setEnemyMoving(on) {
+    fx.moving = on;
+    if (on && !fx.raf) fx.raf = requestAnimationFrame(enemyLoop);
+  }
+
+  function updateHpBar() {
+    var pct = state.dispMax > 0 ? Math.max(0, Math.min(100, (state.dispHp / state.dispMax) * 100)) : 0;
+    $('enemy-hp-fill').style.width = pct + '%';
+  }
+
+  function resetBattleZone(themeStage) {
+    var zone = $('battle-zone');
+    zone.classList.remove('review-mode');
+    for (var i = 1; i <= STAGES_PER_MAP; i++) zone.classList.remove('theme-' + i);
+    if (themeStage) zone.classList.add('theme-' + themeStage);
+    $('enemy-wrap').style.display = '';
+    $('speech').classList.remove('show');
+    $('battle-banner').classList.remove('show');
+  }
+
+  function spawnEnemy(opt) {
+    state.isBoss = !!opt.boss;
+    state.dispMax = opt.hp;
+    state.dispHp = opt.hp;
+    var wrap = $('enemy-wrap');
+    wrap.classList.toggle('boss', state.isBoss);
+    var sp = $('enemy-sprite');
+    sp.className = '';
+    sp.innerHTML = opt.svg;
+    updateHpBar();
+    sp.classList.add('intro');
+    fx.osc = Math.random() * 6.283;
+    if (state.isBoss) {
+      addOnce($('battle-zone'), 'quake');
+      showBanner('ボスの ' + opt.name + 'が あらわれた！！', 1500);
+      soundBossAppear();
+      setTimeout(function () { showSpeech(enemyLine('bossAppear', Math.random), 1400); }, 500);
+    } else {
+      showSpeech(opt.name + '「' + enemyLine('appear', Math.random) + '」', 1100);
+    }
+    setEnemyMoving(true);
+  }
+
+  function spawnQuestEnemy() {
+    var theme = STAGE_THEMES[state.stage - 1];
+    var idx = state.battle.enemyIndex;
+    var en = state.battle.plan[idx];
+    if (en.kind === 'boss') {
+      spawnEnemy({ boss: true, hp: en.maxHp, name: theme.bossName, svg: BOSS_SVGS[theme.boss]() });
+    } else {
+      var cc = idx === 0 ? theme.zakoColors : theme.zakoColors2;
+      spawnEnemy({ boss: false, hp: en.maxHp, name: theme.zakoName, svg: ZAKO_SVGS[theme.zako](cc[0], cc[1]) });
+    }
+  }
+
+  function spawnQuickEnemy() {
+    var kinds = Object.keys(ZAKO_SVGS);
+    var kind = kinds[Math.floor(Math.random() * kinds.length)];
+    var cc = QUICK_COLOR_POOL[Math.floor(Math.random() * QUICK_COLOR_POOL.length)];
+    spawnEnemy({ boss: false, hp: ZAKO_HP, name: ZAKO_NAMES[kind], svg: ZAKO_SVGS[kind](cc[0], cc[1]) });
+  }
+
+  function zoneRect() { return $('battle-zone').getBoundingClientRect(); }
+  function enemyCenter() {
+    var zr = zoneRect();
+    var er = $('enemy-wrap').getBoundingClientRect();
+    return { x: er.left - zr.left + er.width / 2, y: er.top - zr.top + er.height / 2 };
+  }
+
+  function fireShot(crit, style, cb) {
+    var zone = $('battle-zone');
+    var zr = zoneRect();
+    var c = enemyCenter();
+    var s = document.createElement('div');
+    s.className = 'shot' + (crit ? ' crit' : '');
+    s.textContent = style === 'sword' ? '🗡️' : style === 'magic' ? '🔮' : (Math.random() < 0.5 ? '⭐' : '💖');
+    var off = crit ? 22 : 15;
+    s.style.transform = 'translate(44px,' + (zr.height - 44) + 'px)';
+    zone.appendChild(s);
+    void s.offsetWidth;
+    s.style.transform = 'translate(' + (c.x - off) + 'px,' + (c.y - off) + 'px) scale(' + (crit ? 1.3 : 1) + ')';
+    addOnce($('hero'), 'attack');
+    setTimeout(function () { s.remove(); cb(c.x, c.y); }, 180);
+  }
+
+  function burst(x, y, count, colors) {
+    var zone = $('battle-zone');
+    for (var i = 0; i < count; i++) {
+      var p = document.createElement('div');
+      p.className = 'spark';
+      p.style.background = colors[i % colors.length];
+      p.style.left = (x - 5) + 'px';
+      p.style.top = (y - 5) + 'px';
+      zone.appendChild(p);
+      void p.offsetWidth;
+      var ang = Math.random() * Math.PI * 2;
+      var dist = 30 + Math.random() * 55;
+      p.style.transform = 'translate(' + Math.cos(ang) * dist + 'px,' + Math.sin(ang) * dist + 'px) scale(.3)';
+      p.style.opacity = '0';
+      setTimeout(function (el) { return function () { el.remove(); }; }(p), 600);
+    }
+  }
+
+  function dmgPop(x, y, text, crit) {
+    var zone = $('battle-zone');
+    var p = document.createElement('div');
+    p.className = 'dmgpop' + (crit ? ' crit' : '');
+    p.textContent = text;
+    p.style.left = x + 'px';
+    p.style.top = y + 'px';
+    p.style.transform = 'translate(-50%,0)';
+    zone.appendChild(p);
+    void p.offsetWidth;
+    p.style.transform = 'translate(-50%,-46px)';
+    p.style.opacity = '0';
+    setTimeout(function () { p.remove(); }, 750);
+  }
+
+  function dodgeFx() {
+    addOnce($('enemy-sprite'), 'dodge');
+    showSpeech(enemyLine('dodge', Math.random), 1100);
+  }
+
+  function defeatFx(x, y, boss) {
+    addOnce($('enemy-sprite'), 'defeat');
+    burst(x, y, boss ? 26 : 12, boss ? ['#ffd43b', '#ff6b6b', '#ffffff', '#ff922b'] : ['#ffd43b', '#adb5bd', '#ffffff']);
+    if (boss) {
+      addOnce($('battle-zone'), 'quake');
+      showBanner('ボスを たおした！！', 1600);
+      showSpeech(enemyLine('bossDefeat', Math.random), 1400);
+      soundBossDefeat();
+      buzz([90, 60, 160]);
+    } else {
+      showSpeech(enemyLine('defeat', Math.random), 1100);
+      soundDefeat();
+      buzz(70);
+    }
+  }
+
+  function renderLevelButtons() {
+    var wrap = $('level-buttons');
+    wrap.innerHTML = '';
+    LEVELS.forEach(function (lv) {
+      var btn = document.createElement('button');
+      btn.className = 'level-btn';
+      btn.dataset.level = String(lv.level);
+      btn.innerHTML = lv.label + '<small>' + lv.grade + '</small>';
+      btn.addEventListener('click', function () {
+        if (lv.level === 0 && !levelAllowsMode(0, state.mode)) return;
+        state.level = lv.level;
+        refreshSelections();
+      });
+      wrap.appendChild(btn);
+    });
+  }
+
+  function refreshSelections() {
+    document.querySelectorAll('.play-btn').forEach(function (b) {
+      b.classList.toggle('selected', b.dataset.play === state.play);
+    });
+    document.querySelectorAll('.hero-btn').forEach(function (b) {
+      b.classList.toggle('selected', b.dataset.hero === data.hero);
+    });
+    document.querySelectorAll('.mode-btn').forEach(function (b) {
+      var locked = !levelAllowsMode(state.level, b.dataset.mode);
+      b.classList.toggle('locked', locked);
+      b.classList.toggle('selected', !locked && b.dataset.mode === state.mode);
+    });
+    document.querySelectorAll('.level-btn').forEach(function (b) {
+      var lvl = Number(b.dataset.level);
+      var locked = lvl === 0 && !levelAllowsMode(0, state.mode);
+      b.classList.toggle('locked', locked);
+      b.classList.toggle('selected', lvl === state.level);
+    });
+    document.querySelectorAll('.input-btn').forEach(function (b) {
+      b.classList.toggle('selected', b.dataset.input === state.input);
+    });
+    $('btn-start').textContent = state.play === 'quest' ? '🚀 ぼうけんに でかける！' : '🚀 スタート！';
+  }
+
+  document.querySelectorAll('.play-btn').forEach(function (b) {
+    b.addEventListener('click', function () {
+      state.play = b.dataset.play;
+      data.play = state.play;
+      saveData();
+      refreshSelections();
+    });
+  });
+  document.querySelectorAll('.hero-btn').forEach(function (b) {
+    b.addEventListener('click', function () {
+      data.hero = b.dataset.hero === 'wizard' ? 'wizard' : 'knight';
+      saveData();
+      renderHero();
+      refreshSelections();
+    });
+  });
+  document.querySelectorAll('.mode-btn').forEach(function (b) {
+    b.addEventListener('click', function () {
+      if (!levelAllowsMode(state.level, b.dataset.mode)) return;
+      state.mode = b.dataset.mode;
+      refreshSelections();
+    });
+  });
+  document.querySelectorAll('.input-btn').forEach(function (b) {
+    b.addEventListener('click', function () {
+      state.input = b.dataset.input;
+      data.input = state.input;
+      saveData();
+      refreshSelections();
+    });
+  });
+
+  function hsKey(mode, level) { return mode + '-' + level; }
+
+  function renderHiscores() {
+    var t = $('hiscore-table');
+    var html = '<tr><th></th>';
+    LEVELS.forEach(function (lv) {
+      html += '<th>' + (lv.level === 0 ? 'にゅうもん' : 'Lv' + lv.level) + '</th>';
+    });
+    html += '</tr>';
+    MODES.forEach(function (m) {
+      html += '<tr><th>' + m.sym + ' ' + m.label + '</th>';
+      LEVELS.forEach(function (lv) {
+        var v = data.hs[hsKey(m.id, lv.level)];
+        html += '<td>' + (v ? v + 'てん' : '−') + '</td>';
+      });
+      html += '</tr>';
+    });
+    t.innerHTML = html;
+  }
+
+  $('btn-erase').addEventListener('click', function () {
+    if (confirm('きろく（ハイスコアと ぼうけんの きろく）を ぜんぶ けしますか？')) {
+      data.hs = {};
+      data.quest = {};
+      saveData();
+      renderHiscores();
+    }
+  });
+
+  function setupInputArea() {
+    $('choices').style.display = state.input === 'choice' ? 'grid' : 'none';
+    $('numpad').style.display = state.input === 'pad' ? 'block' : 'none';
+  }
+
+  function startQuick() {
+    state.play = 'quick';
+    state.playing = true;
+    state.gameId++;
+    state.qNum = 0;
+    state.score = 0;
+    state.correct = 0;
+    state.combo = 0;
+    state.stage = 0;
+    state.growth = 1;
+    state.battle = null;
+    state.stageMiss = 0;
+    state.seqIndex = 0;
+    state.phase = 'battle';
+    state.reviewQueue = [];
+    state.reviewIndex = 0;
+    state.limitMs = timeLimitSec(state.level) * 1000;
+    setupInputArea();
+    resetBattleZone(0);
+    renderHero();
+    $('stage-label').style.display = 'none';
+    showScreen('game');
+    nextQuestion();
+  }
+
+  function startStage(stage) {
+    var theme = STAGE_THEMES[stage - 1];
+    state.play = 'quest';
+    state.playing = true;
+    state.gameId++;
+    state.stage = stage;
+    state.growth = stageGrowth(stage);
+    state.battle = createBattle(stage);
+    state.qNum = 0;
+    state.score = 0;
+    state.correct = 0;
+    state.combo = 0;
+    state.stageMiss = 0;
+    state.seqIndex = 0;
+    state.phase = 'battle';
+    state.reviewQueue = [];
+    state.reviewIndex = 0;
+    state.limitMs = timeLimitSec(state.level) * 1000;
+    setupInputArea();
+    resetBattleZone(stage);
+    renderHero();
+    var label = $('stage-label');
+    label.style.display = 'block';
+    label.innerHTML = 'ステージ' + stage + '　<ruby>' + theme.name + '<rt>' + theme.kana + '</rt></ruby>';
+    showScreen('game');
+    spawnQuestEnemy();
+    nextQuestion();
+  }
+
+  function enterMap() {
+    renderMap();
+    showScreen('map');
+  }
+
+  var MAP_POS = [
+    { x: 14, y: 78 }, { x: 40, y: 84 }, { x: 66, y: 78 }, { x: 82, y: 48 }, { x: 58, y: 22 }
+  ];
+
+  function renderMap() {
+    var key = questKey(state.mode, state.level);
+    var entry = data.quest[key] || defaultQuestEntry();
+    var mode = MODES.filter(function (x) { return x.id === state.mode; })[0];
+    var lv = LEVELS.filter(function (x) { return x.level === state.level; })[0];
+    $('map-info').textContent = mode.sym + ' ' + mode.label + '・' + lv.label;
+    var wrap = $('map-nodes');
+    wrap.innerHTML = '';
+    var clear = isMapClear(entry);
+    for (var s = 1; s <= STAGES_PER_MAP; s++) {
+      var theme = STAGE_THEMES[s - 1];
+      var node = document.createElement('div');
+      var cls = 'stage-node';
+      var dot;
+      if (s <= entry.cleared) { cls += ' cleared'; dot = '⭐'; }
+      else if (!clear && s === entry.cleared + 1) { cls += ' current'; dot = heroSvg(); }
+      else { dot = '🔒'; }
+      node.className = cls;
+      node.style.left = MAP_POS[s - 1].x + '%';
+      node.style.top = MAP_POS[s - 1].y + '%';
+      node.innerHTML = '<div class="stage-dot">' + dot + '</div>' +
+        '<small><ruby>' + theme.name + '<rt>' + theme.kana + '</rt></ruby></small>';
+      wrap.appendChild(node);
+    }
+    $('map-total').textContent = 'そうスコア ' + entry.score + 'てん' + (entry.best > 0 ? '（さいこう ' + entry.best + 'てん）' : '');
+    $('map-clear-banner').classList.toggle('show', clear);
+    $('btn-map-start').textContent = clear
+      ? '🔁 さいしょから もういちど'
+      : '⚔️ ステージ' + (entry.cleared + 1) + '「' + STAGE_THEMES[entry.cleared].name + '」に すすむ';
+  }
+
+  $('btn-map-start').addEventListener('click', function () {
+    var key = questKey(state.mode, state.level);
+    var entry = data.quest[key] || defaultQuestEntry();
+    if (isMapClear(entry)) {
+      data.quest[key] = resetQuestEntry(entry);
+      saveData();
+      startStage(1);
+    } else {
+      startStage(entry.cleared + 1);
+    }
+  });
+  $('btn-map-back').addEventListener('click', function () {
+    renderHiscores();
+    showScreen('title');
+  });
+
+  $('btn-start').addEventListener('click', function () {
+    if (state.play === 'quest') enterMap();
+    else startQuick();
+  });
+  $('btn-retry').addEventListener('click', function () {
+    if (state.play === 'quest') {
+      var key = questKey(state.mode, state.level);
+      data.quest[key] = resetQuestEntry(data.quest[key] || defaultQuestEntry());
+      saveData();
+      enterMap();
+    } else {
+      startQuick();
+    }
+  });
+  $('btn-to-title').addEventListener('click', function () { renderHiscores(); showScreen('title'); });
+  $('btn-sc-next').addEventListener('click', function () { enterMap(); });
+  $('btn-quit').addEventListener('click', function () {
+    stopTimer();
+    setEnemyMoving(false);
+    state.answered = true;
+    state.playing = false;
+    state.gameId++;
+    $('feedback').classList.remove('show');
+    if (state.play === 'quest') enterMap();
+    else { renderHiscores(); showScreen('title'); }
+  });
+
+  function stopTimer() {
+    if (state.rafId) { cancelAnimationFrame(state.rafId); state.rafId = 0; }
+  }
+
+  function tickTimer() {
+    var remain = state.deadline - performance.now();
+    var ratio = Math.max(0, remain / state.limitMs);
+    var bar = $('timer-bar');
+    bar.style.width = (ratio * 100) + '%';
+    bar.classList.toggle('low', ratio < 0.3);
+    if (remain <= 0) {
+      if (!state.answered) handleAnswer(null);
+      return;
+    }
+    state.rafId = requestAnimationFrame(tickTimer);
+  }
+
+  function renderProblem() {
+    state.answered = false;
+    state.padValue = '';
+    state.inputActive = false;
+
+    var q = $('question');
+    q.textContent = state.problem.a + ' ' + OP_SYM[state.problem.op] + ' ' + state.problem.b + ' ＝ ？';
+    q.classList.remove('pop');
+    void q.offsetWidth;
+    q.classList.add('pop');
+
+    if (state.input === 'choice') {
+      var wrap = $('choices');
+      wrap.innerHTML = '';
+      makeChoices(state.problem.answer, Math.random).forEach(function (c) {
+        var btn = document.createElement('button');
+        btn.className = 'choice-btn';
+        btn.textContent = String(c);
+        btn.addEventListener('click', function () { handleAnswer(c); });
+        wrap.appendChild(btn);
+      });
+    } else {
+      $('pad-display').innerHTML = '&nbsp;';
+    }
+
+    state.deadline = performance.now() + state.limitMs;
+    tickTimer();
+  }
+
+  function nextQuestion() {
+    if (!state.playing) return;
+    stopTimer();
+
+    if (state.phase === 'review') {
+      if (state.reviewIndex >= state.reviewQueue.length) { endReview(); return; }
+      state.problem = state.reviewQueue[state.reviewIndex];
+      $('hud-progress').textContent = 'ふくしゅう ' + (state.reviewIndex + 1) + '/' + state.reviewQueue.length;
+      $('hud-score').textContent = 'スコア ' + state.score;
+      $('hud-combo').textContent = '';
+      renderProblem();
+      return;
+    }
+
+    state.qNum++;
+    if (state.play === 'quick' && state.qNum > QUESTIONS_PER_GAME) { maybeStartReview(); return; }
+
+    if (state.play === 'quest' && state.level === 0) {
+      state.problem = nyuumonSeqProblem(state.mode, state.stage, state.seqIndex);
+      state.seqIndex++;
+    } else {
+      state.problem = genProblem(state.mode, state.level, Math.random, state.play === 'quest' ? state.growth : 1);
+    }
+
+    if (state.play === 'quick') {
+      spawnQuickEnemy();
+      $('hud-progress').textContent = 'もんだい ' + state.qNum + '/' + QUESTIONS_PER_GAME;
+    } else {
+      var left = state.battle.plan.length - state.battle.defeated;
+      $('hud-progress').textContent = 'ステージ' + state.stage + '　てき あと' + left;
+      var sp = $('enemy-sprite');
+      sp.classList.remove('hit');
+      sp.classList.remove('dodge');
+      setEnemyMoving(true);
+    }
+    $('hud-score').textContent = 'スコア ' + state.score;
+    $('hud-combo').textContent = state.combo >= 2 ? '🔥' + state.combo + 'れんぞく ' + cheerMessage(state.combo) : '';
+
+    renderProblem();
+  }
+
+  function markInputActive() {
+    if (!state.answered) state.inputActive = true;
+  }
+  $('choices').addEventListener('pointerover', markInputActive);
+  $('choices').addEventListener('pointerdown', markInputActive);
+  $('choices').addEventListener('touchstart', markInputActive, { passive: true });
+
+  document.querySelectorAll('.pad-btn').forEach(function (b) {
+    b.addEventListener('click', function () {
+      if (state.answered) return;
+      var key = b.dataset.key;
+      if (key === 'clear') {
+        state.padValue = '';
+      } else if (key === 'ok') {
+        if (state.padValue === '') return;
+        handleAnswer(Number(state.padValue));
+        return;
+      } else if (state.padValue.length < 4) {
+        state.padValue += key;
+      }
+      state.inputActive = state.padValue.length > 0;
+      $('pad-display').textContent = state.padValue || ' ';
+    });
+  });
+
+  function maybeStartReview() {
+    if (state.reviewQueue.length > 0) { startReview(); return; }
+    if (state.play === 'quest') finishStage();
+    else showResult();
+  }
+
+  function startReview() {
+    state.phase = 'review';
+    state.reviewIndex = 0;
+    setEnemyMoving(false);
+    $('enemy-wrap').style.display = 'none';
+    $('battle-zone').classList.add('review-mode');
+    showBanner('📖 ふくしゅうタイム！', 1600);
+    beep(523, 0.15, 0);
+    beep(659, 0.2, 0.15);
+    nextQuestion();
+  }
+
+  function endReview() {
+    state.phase = 'battle';
+    $('enemy-wrap').style.display = '';
+    $('battle-zone').classList.remove('review-mode');
+    if (state.play === 'quest') finishStage();
+    else showResult();
+  }
+
+  function handleReviewAnswer(value) {
+    state.answered = true;
+    stopTimer();
+    var isCorrect = value === state.problem.answer;
+    var gid = state.gameId;
+    var fb = $('feedback');
+    var main = $('fb-main');
+    var sub = $('fb-sub');
+    var ans = $('fb-answer');
+    if (isCorrect) {
+      state.score += REVIEW_BONUS;
+      $('hud-score').textContent = 'スコア ' + state.score;
+      main.textContent = '⭕ せいかい！';
+      main.className = 'good';
+      sub.textContent = 'ふくしゅう ばっちり！（＋' + REVIEW_BONUS + 'てん）';
+      ans.textContent = '';
+      soundCorrect();
+    } else {
+      main.textContent = value === null ? '⏰ じかんぎれ！' : 'ざんねん！';
+      main.className = 'bad';
+      sub.textContent = 'だいじょうぶ！ こたえを おぼえよう。';
+      ans.textContent = state.problem.a + ' ' + OP_SYM[state.problem.op] + ' ' + state.problem.b + ' ＝ ' + state.problem.answer;
+      soundWrong();
+    }
+    state.reviewIndex++;
+    setTimeout(function () {
+      if (gid !== state.gameId || !state.playing) return;
+      fb.classList.add('show');
+    }, 120);
+    setTimeout(function () {
+      if (gid !== state.gameId) return;
+      fb.classList.remove('show');
+      if (state.playing) nextQuestion();
+    }, isCorrect ? 1100 : 2300);
+  }
+
+  function handleAnswer(value) {
+    if (state.answered) return;
+    if (state.phase === 'review') { handleReviewAnswer(value); return; }
+    state.answered = true;
+    stopTimer();
+    setEnemyMoving(false);
+
+    var remain = Math.max(0, state.deadline - performance.now());
+    var ratio = remain / state.limitMs;
+    var isCorrect = value === state.problem.answer;
+    var gid = state.gameId;
+
+    var fb = $('feedback');
+    var main = $('fb-main');
+    var sub = $('fb-sub');
+    var ans = $('fb-answer');
+
+    if (isCorrect) {
+      var crit = isCritical(ratio);
+      var dmg = hitDamage(crit);
+      var style = attackStyle(state.mode, state.level);
+      state.combo++;
+      state.correct++;
+      state.score += calcScore(ratio, state.combo - 1);
+      var defeated, wasBoss = false, stageClear = false;
+      if (state.play === 'quest') {
+        var res = applyHit(state.battle, dmg);
+        state.battle = res.battle;
+        defeated = res.defeated;
+        wasBoss = res.wasBoss;
+        stageClear = res.stageClear;
+      } else {
+        defeated = true;
+      }
+      $('hud-score').textContent = 'スコア ' + state.score;
+
+      fireShot(crit, style, function (x, y) {
+        if (gid !== state.gameId) return;
+        state.dispHp = Math.max(0, state.dispHp - dmg);
+        updateHpBar();
+        addOnce($('enemy-sprite'), 'hit');
+        burst(x, y, crit ? 14 : 8, FX_COLORS[style]);
+        dmgPop(x, y - 12, String(dmg), crit);
+        if (crit) {
+          addOnce($('battle-zone'), 'flash');
+          showBanner('クリティカル！！', 900);
+          soundCritical();
+        } else {
+          soundHit();
+        }
+        if (defeated) {
+          setTimeout(function () {
+            if (gid !== state.gameId) return;
+            defeatFx(x, y, wasBoss);
+          }, 230);
+        }
+      });
+
+      main.textContent = crit ? '💥 クリティカル！！' : ['⭕ せいかい！', '🌟 すごい！', '🎯 やったね！'][Math.floor(Math.random() * 3)];
+      main.className = crit ? 'good crit' : 'good';
+      if (!crit) soundCorrect();
+      sub.textContent = state.combo >= 2 ? state.combo + 'れんぞく！ ' + cheerMessage(state.combo) : '';
+      ans.textContent = '';
+
+      var delay = stageClear ? 2300 : defeated ? (wasBoss ? 2300 : 1550) : 1100;
+      setTimeout(function () {
+        if (gid !== state.gameId || !state.playing) return;
+        fb.classList.add('show');
+      }, 340);
+      setTimeout(function () {
+        if (gid !== state.gameId) return;
+        fb.classList.remove('show');
+        if (!state.playing) return;
+        if (state.play === 'quest') {
+          if (stageClear) { maybeStartReview(); return; }
+          if (defeated) spawnQuestEnemy();
+          nextQuestion();
+        } else {
+          nextQuestion();
+        }
+      }, delay);
+    } else {
+      state.combo = 0;
+      state.stageMiss++;
+      state.reviewQueue = addToReview(state.reviewQueue, state.problem);
+      dodgeFx();
+      soundWrong();
+      main.textContent = value === null ? '⏰ じかんぎれ！' : 'ざんねん！';
+      main.className = 'bad';
+      sub.textContent = 'だいじょうぶ！ つぎは できるよ。こたえは…';
+      ans.textContent = state.problem.a + ' ' + OP_SYM[state.problem.op] + ' ' + state.problem.b + ' ＝ ' + state.problem.answer;
+      setTimeout(function () {
+        if (gid !== state.gameId || !state.playing) return;
+        fb.classList.add('show');
+      }, 430);
+      setTimeout(function () {
+        if (gid !== state.gameId) return;
+        fb.classList.remove('show');
+        if (state.playing) nextQuestion();
+      }, 2450);
+    }
+  }
+
+  function dropConfetti(count) {
+    var n = count || 40;
+    var colors = ['#ff6b6b', '#ffd43b', '#51cf66', '#4dabf7', '#cc5de8', '#ff922b'];
+    for (var i = 0; i < n; i++) {
+      var c = document.createElement('div');
+      c.className = 'confetti';
+      c.style.left = (Math.random() * 100) + 'vw';
+      c.style.background = colors[i % colors.length];
+      c.style.animationDuration = (1.8 + Math.random() * 1.6) + 's';
+      c.style.animationDelay = (Math.random() * 0.6) + 's';
+      c.style.borderRadius = Math.random() < 0.5 ? '50%' : '2px';
+      document.body.appendChild(c);
+      setTimeout(function (el) { return function () { el.remove(); }; }(c), 4500);
+    }
+  }
+
+  function finishStage() {
+    stopTimer();
+    state.playing = false;
+    setEnemyMoving(false);
+    var theme = STAGE_THEMES[state.stage - 1];
+    var key = questKey(state.mode, state.level);
+    var entry = data.quest[key] || defaultQuestEntry();
+    var updated = recordStageClear(entry, state.stage, state.score, state.stageMiss);
+    data.quest[key] = updated;
+    saveData();
+    if (isMapClear(updated)) { showQuestResult(updated); return; }
+    $('sc-title').innerHTML = 'ステージ' + state.stage + '「<ruby>' + theme.name + '<rt>' + theme.kana + '</rt></ruby>」クリア！';
+    $('sc-score').textContent = '＋' + state.score + 'てん';
+    $('sc-note').textContent = 'つぎの ステージが ひらいたよ！';
+    showScreen('stageclear');
+    soundFanfare();
+    dropConfetti(18);
+  }
+
+  function showQuestResult(entry) {
+    $('result-score').textContent = entry.score + 'てん';
+    $('result-correct').textContent = '5ステージ ぜんぶ クリア！';
+    $('result-title').innerHTML = '<ruby>称号<rt>しょうごう</rt></ruby>：' + scoreTitle(entry.score);
+    $('result-record').classList.toggle('show', entry.score > 0 && entry.score >= entry.best);
+    $('btn-retry').textContent = 'もういちど ぼうけんする';
+    showScreen('result');
+    soundFanfare();
+    dropConfetti(40);
+  }
+
+  function showResult() {
+    stopTimer();
+    state.playing = false;
+    setEnemyMoving(false);
+    $('result-score').textContent = state.score + 'てん';
+    $('result-correct').textContent = QUESTIONS_PER_GAME + 'もんちゅう ' + state.correct + 'もん せいかい';
+    $('result-title').innerHTML = '<ruby>称号<rt>しょうごう</rt></ruby>：' + getTitle(state.correct);
+    $('btn-retry').textContent = 'もういちど あそぶ';
+
+    var key = hsKey(state.mode, state.level);
+    var prev = data.hs[key] || 0;
+    var isRecord = state.score > prev;
+    if (isRecord) {
+      data.hs[key] = state.score;
+      saveData();
+    }
+    $('result-record').classList.toggle('show', isRecord && state.score > 0);
+
+    showScreen('result');
+    if (state.correct >= 6) { soundFanfare(); dropConfetti(40); }
+  }
+
+  renderLevelButtons();
+  renderHero();
+  refreshSelections();
+  renderHiscores();
+  updateMuteButton();
+})();
+</script>
+</body>
+</html>
