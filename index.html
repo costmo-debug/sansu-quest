@@ -224,14 +224,29 @@
   .choice-btn:nth-child(4) { background: #cc5de8; }
 
   #numpad { display: none; }
-  #pad-display {
-    background: #fff; border-radius: 14px; text-align: center; font-size: 2rem;
-    font-weight: bold; min-height: 58px; line-height: 58px; margin-bottom: 10px; color: #2a7fbf;
+  #pad-fields { display: flex; gap: 10px; margin-bottom: 6px; }
+  #pad-fields.single #pf-rem { display: none; }
+  .pad-field {
+    flex: 1; background: #fff; border-radius: 14px; border: 3px solid #dee2e6;
+    padding: 4px 8px 6px; text-align: center; transition: border-color .1s ease;
   }
+  .pad-field .pf-label { display: block; font-size: .72rem; font-weight: bold; color: #868e96; }
+  .pad-field .pf-box {
+    display: block; min-height: 44px; line-height: 44px; font-size: 2rem;
+    font-weight: bold; color: #2a7fbf;
+  }
+  .pad-field.active { border-color: #4dabf7; box-shadow: 0 0 0 3px rgba(77,171,247,.25); }
+  .pad-field.active .pf-box::after { content: "|"; color: #ff6b35; animation: caret 1s step-end infinite; }
+  @keyframes caret { 50% { opacity: 0; } }
+  .pad-field.wrong { border-color: #fa5252; }
+  .pad-field.wrong .pf-box { color: #e03131; }
+  #pad-hint { font-size: .78rem; color: #e8590c; font-weight: bold; text-align: center; height: 16px; margin-bottom: 6px; }
   #pad-keys { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
   .pad-btn { background: #74c0fc; font-size: 1.5rem; min-height: 60px; }
   .pad-btn.pad-clear { background: #adb5bd; font-size: 1.1rem; }
+  .pad-btn.pad-arrow { background: #ffa94d; font-size: 1.2rem; }
   .pad-btn.pad-ok { background: #ff6b35; font-size: 1.2rem; }
+  .pad-btn.pad-ok:disabled { background: #ced4da; box-shadow: none; }
 
   #feedback {
     position: fixed; inset: 0; display: none; z-index: 40;
@@ -294,6 +309,7 @@
       <div class="btn-grid">
         <button class="play-btn" data-play="quest">🗺 クエスト<small>マップを すすんで ボスたいじ</small></button>
         <button class="play-btn" data-play="quick">⚡ クイック<small>10もん しょうぶ</small></button>
+        <button class="play-btn" id="btn-daily" style="grid-column: 1 / -1; background:#f06595;">📅 毎日トレーニング<small>じかんいっぱい れんしゅう</small></button>
       </div>
     </div>
 
@@ -327,6 +343,7 @@
         <button class="input-btn" data-input="choice">4たくから えらぶ</button>
         <button class="input-btn" data-input="pad">すうじを うつ</button>
       </div>
+      <p id="input-note" style="text-align:center;color:#e8590c;font-weight:bold;font-size:.85rem;margin-top:8px;"></p>
     </div>
 
     <button id="btn-start">🚀 スタート！</button>
@@ -381,7 +398,11 @@
     <div id="question">1 ＋ 1 ＝ ？</div>
     <div id="choices"></div>
     <div id="numpad">
-      <div id="pad-display">&nbsp;</div>
+      <div id="pad-fields">
+        <div class="pad-field" id="pf-ans"><span class="pf-label">こたえ</span><span class="pf-box" id="pad-ans"></span></div>
+        <div class="pad-field" id="pf-rem"><span class="pf-label">あまり</span><span class="pf-box" id="pad-rem"></span></div>
+      </div>
+      <div id="pad-hint"></div>
       <div id="pad-keys">
         <button class="pad-btn" data-key="7">7</button>
         <button class="pad-btn" data-key="8">8</button>
@@ -392,9 +413,11 @@
         <button class="pad-btn" data-key="1">1</button>
         <button class="pad-btn" data-key="2">2</button>
         <button class="pad-btn" data-key="3">3</button>
-        <button class="pad-btn pad-clear" data-key="clear">けす</button>
+        <button class="pad-btn pad-arrow" data-key="left" id="pad-left">←</button>
         <button class="pad-btn" data-key="0">0</button>
-        <button class="pad-btn pad-ok" data-key="ok">こたえる</button>
+        <button class="pad-btn pad-arrow" data-key="right" id="pad-right">→</button>
+        <button class="pad-btn pad-clear" data-key="clear">けす</button>
+        <button class="pad-btn pad-ok" data-key="ok" id="pad-ok">けってい</button>
       </div>
     </div>
   </section>
@@ -419,6 +442,47 @@
     </div>
     <button id="btn-retry">もういちど あそぶ</button>
     <button id="btn-to-title">タイトルに もどる</button>
+  </section>
+
+  <section id="screen-daily" class="screen">
+    <h1>毎日トレーニング</h1>
+    <p class="subtitle">じかんいっぱい すきなだけ れんしゅう！</p>
+    <div class="panel">
+      <h2>レベルを えらんでね</h2>
+      <div id="daily-levels" class="btn-grid"></div>
+    </div>
+    <div class="panel">
+      <h2>モードを えらんでね</h2>
+      <div id="daily-modes" class="btn-grid"></div>
+    </div>
+    <div class="panel">
+      <h2>じかんを えらんでね</h2>
+      <div class="btn-grid">
+        <button class="input-btn daily-min" data-min="5">5ふん</button>
+        <button class="input-btn daily-min" data-min="10">10ぷん</button>
+      </div>
+    </div>
+    <div class="panel" id="daily-best-panel" style="text-align:center;">
+      <h2>まえの ハイスコア（せいかいすう）</h2>
+      <div id="daily-best" style="font-size:1.4rem;font-weight:bold;color:#f06595;">−</div>
+    </div>
+    <button id="btn-daily-start">📅 はじめる</button>
+    <button id="btn-daily-back" style="width:100%;min-height:52px;background:#4dabf7;">タイトルに もどる</button>
+  </section>
+
+  <section id="screen-dailyresult" class="screen">
+    <h1>毎日トレーニング けっか</h1>
+    <div class="panel" style="text-align:center;">
+      <div style="font-size:1rem;color:#2a7fbf;font-weight:bold;">せいかいした かず</div>
+      <div id="dr-correct" style="font-size:3.4rem;font-weight:bold;color:#f06595;">0もん</div>
+      <div style="display:flex;justify-content:center;gap:24px;margin-top:8px;">
+        <div><div style="font-size:.8rem;color:#868e96;">スコア</div><div id="dr-score" style="font-size:1.6rem;font-weight:bold;color:#ff6b35;">0</div></div>
+        <div><div style="font-size:.8rem;color:#868e96;">たおした かず</div><div id="dr-defeated" style="font-size:1.6rem;font-weight:bold;color:#4dabf7;">0</div></div>
+      </div>
+      <div id="dr-record" style="display:none;font-size:1.2rem;color:#e8590c;font-weight:bold;margin-top:10px;">🎉 ハイスコア こうしん！ 🎉</div>
+    </div>
+    <button id="btn-dr-retry" style="width:100%;min-height:62px;font-size:1.3rem;background:linear-gradient(135deg,#f06595,#e64980);margin-bottom:10px;">もういちど</button>
+    <button id="btn-dr-title" style="width:100%;min-height:56px;background:#4dabf7;">タイトルに もどる</button>
   </section>
 
 </div>
@@ -452,7 +516,9 @@ var LEVELS = [
   { level: 0, label: 'にゅうもん', grade: 'ようちえん・1年生むけ' },
   { level: 1, label: 'レベル1', grade: '1・2年生むけ' },
   { level: 2, label: 'レベル2', grade: '2・3年生むけ' },
-  { level: 3, label: 'レベル3', grade: '3・4年生むけ' }
+  { level: 3, label: 'レベル3', grade: '3・4年生むけ' },
+  { level: 4, label: 'レベル4', grade: '2けたと1けた／4年生むけ' },
+  { level: 5, label: 'レベル5', grade: '2けたと2けた／4年生〜' }
 ];
 
 var STAGE_THEMES = [
@@ -462,6 +528,38 @@ var STAGE_THEMES = [
   { stage: 4, name: '火山のふもと', kana: 'かざんのふもと', zako: 'ghost', zakoName: 'おばけ', boss: 'dragon', bossName: 'ドラゴン', zakoColors: ['#ffa94d', '#e8590c'], zakoColors2: ['#ff8787', '#c92a2a'] },
   { stage: 5, name: '魔王城', kana: 'まおうじょう', zako: 'ghost', zakoName: 'おばけ', boss: 'maou', bossName: 'まおう', zakoColors: ['#b197fc', '#7048e8'], zakoColors2: ['#e599f7', '#9c36b5'] }
 ];
+
+var STAGE_THEMES_ADV = [
+  { stage: 1, name: '草原の道', kana: 'そうげんのみち', zako: 'bone', zakoName: 'ホネスケルトン', boss: 'boneking', bossName: 'ホネホネキング', zakoColors: ['#f8f9fa', '#868e96'], zakoColors2: ['#e9ecef', '#adb5bd'] },
+  { stage: 2, name: '森の小道', kana: 'もりのこみち', zako: 'cactus', zakoName: 'とげとげサボテン', boss: 'thornqueen', bossName: 'いばらのじょおう', zakoColors: ['#69db7c', '#2f9e44'], zakoColors2: ['#8ce99a', '#37b24d'] },
+  { stage: 3, name: '光る洞くつ', kana: 'ひかるどうくつ', zako: 'moss', zakoName: 'ヒカリゴケむし', boss: 'crystaldragon', bossName: 'クリスタルドラゴン', zakoColors: ['#66d9e8', '#0c8599'], zakoColors2: ['#99e9f2', '#1098ad'] },
+  { stage: 4, name: '火山のふもと', kana: 'かざんのふもと', zako: 'wisp', zakoName: 'ひのたまウィスプ', boss: 'magmagiant', bossName: 'マグマきょじん', zakoColors: ['#ffa94d', '#e8590c'], zakoColors2: ['#ffc078', '#f76707'] },
+  { stage: 5, name: '魔王城', kana: 'まおうじょう', zako: 'wisp', zakoName: 'ひのたまウィスプ', boss: 'darkmaou', bossName: 'やみのだいまおう', zakoColors: ['#b197fc', '#7048e8'], zakoColors2: ['#e599f7', '#9c36b5'] }
+];
+
+function themeFor(level, stage) {
+  return (level >= 4 ? STAGE_THEMES_ADV : STAGE_THEMES)[stage - 1];
+}
+
+function enemyScaleFor(level) {
+  return level === 5 ? 1.15 : 1;
+}
+
+function enemyFor(level, stage, index) {
+  var theme = themeFor(level, stage);
+  if (!theme) return null;
+  var plan = makeStagePlan(stage);
+  var i = Math.max(0, Math.min(index, plan.length - 1));
+  var kind = plan[i].kind;
+  if (kind === 'boss') return { id: theme.boss, name: theme.bossName, boss: true };
+  return { id: theme.zako, name: theme.zakoName, boss: false };
+}
+
+function divRangeFor(level, g) {
+  if (level === 4) return { bLo: 2, bHi: 9, qLo: 2, qHi: 9, aLo: 10, aHi: growHi(40, 89, g) };
+  if (level >= 5) return { bLo: 10, bHi: growHi(30, 99, g), qLo: 2, qHi: 9, aLo: 10, aHi: 989 };
+  return null;
+}
 
 var ENEMY_LINES = {
   appear: ['へへん！', 'つかまえて ごらん！', 'まけないぞ〜！'],
@@ -517,23 +615,51 @@ function genProblem(mode, level, rnd, growth) {
   } else {
     op = mode;
   }
-  var a, b, q, t, hi;
+  var a, b, q, t, hi, guard, rr, rem;
   if (op === 'add') {
     if (level === 0) { hi = growHi(5, 10, g); a = ri(rnd, 0, hi); b = ri(rnd, a === 0 ? 1 : 0, hi - a); }
     else if (level === 1) { hi = growHi(5, 9, g); a = ri(rnd, 1, hi); b = ri(rnd, 1, hi); }
     else if (level === 2) { hi = growHi(40, 99, g); a = ri(rnd, 10, hi); b = ri(rnd, 1, 9); }
+    else if (level === 4) {
+      hi = growHi(40, 99, g); guard = 0;
+      do { a = ri(rnd, 10, hi); b = ri(rnd, 1, 9); guard++; } while (a % 10 + b < 10 && guard <= 40);
+      if (a % 10 + b < 10) { a = Math.max(11, a - a % 10 + 1); b = 9; }
+    }
     else { hi = growHi(40, 99, g); a = ri(rnd, 10, hi); b = ri(rnd, 10, hi); }
   } else if (op === 'sub') {
     if (level === 0) { hi = growHi(5, 10, g); a = ri(rnd, 1, hi); b = ri(rnd, 0, a); }
     else if (level === 1) { hi = growHi(5, 9, g); a = ri(rnd, 1, hi); b = ri(rnd, 1, hi); }
     else if (level === 2) { hi = growHi(40, 99, g); a = ri(rnd, 10, hi); b = ri(rnd, 1, 9); }
+    else if (level === 4) {
+      hi = growHi(40, 99, g); guard = 0;
+      do { a = ri(rnd, 10, hi); b = ri(rnd, 1, 9); guard++; } while (a % 10 >= b && guard <= 40);
+      if (a % 10 >= b) { a = a - a % 10; b = 1; }
+    }
     else { hi = growHi(40, 99, g); a = ri(rnd, 10, hi); b = ri(rnd, 10, hi); }
     if (b > a) { t = a; a = b; b = t; }
   } else if (op === 'mul') {
     if (level === 1) { a = ri(rnd, 1, growHi(3, 5, g)); b = ri(rnd, 1, growHi(5, 9, g)); }
     else if (level === 2) { hi = growHi(5, 9, g); a = ri(rnd, 1, hi); b = ri(rnd, 1, hi); }
+    else if (level >= 5) { a = ri(rnd, 10, growHi(30, 99, g)); b = ri(rnd, 10, growHi(30, 99, g)); }
     else { a = ri(rnd, 10, growHi(40, 99, g)); b = ri(rnd, 2, 9); }
   } else {
+    if (level >= 4) {
+      rr = divRangeFor(level, g); guard = 0;
+      do {
+        b = ri(rnd, rr.bLo, rr.bHi);
+        q = ri(rnd, rr.qLo, rr.qHi);
+        rem = (rnd() < 0.5) ? 0 : ri(rnd, 1, b - 1);
+        a = b * q + rem;
+        guard++;
+      } while ((a < rr.aLo || a > rr.aHi) && guard <= 40);
+      if (a < rr.aLo || a > rr.aHi) {
+        if (level === 4) {
+          if (rr.aHi < 81) { b = 4; q = 5; rem = 0; a = 20; }
+          else { b = 9; q = 9; rem = 0; a = 81; }
+        } else { b = 10; q = 2; rem = 0; a = 20; }
+      }
+      return { op: 'div', a: a, b: b, answer: q, remainder: rem };
+    }
     if (level === 1) { b = ri(rnd, 2, 5); q = ri(rnd, 1, growHi(5, 9, g)); }
     else if (level === 2) { b = ri(rnd, 2, 9); q = ri(rnd, 1, growHi(5, 9, g)); }
     else { b = ri(rnd, 2, 9); q = ri(rnd, 10, growHi(40, 99, g)); }
@@ -585,7 +711,9 @@ function addToReview(queue, problem) {
   for (var i = 0; i < queue.length; i++) {
     if (problemKey(queue[i]) === problemKey(problem)) return queue;
   }
-  return queue.concat([{ op: problem.op, a: problem.a, b: problem.b, answer: problem.answer }]);
+  var copy = { op: problem.op, a: problem.a, b: problem.b, answer: problem.answer };
+  if ('remainder' in problem) copy.remainder = problem.remainder;
+  return queue.concat([copy]);
 }
 
 function makeChoices(answer, rnd) {
@@ -646,6 +774,8 @@ function timeLimitSec(level) {
   if (level === 0) return 15;
   if (level === 1) return 12;
   if (level === 2) return 16;
+  if (level === 4) return 30;
+  if (level === 5) return 60;
   return 20;
 }
 
@@ -663,8 +793,84 @@ function attackStyle(mode, level) {
   return 'sword';
 }
 
-function enemyPeriodSec(inputActive) {
-  return inputActive ? 1 : 2;
+var ENEMY_AMP_PX = 7;
+var ENEMY_PERIOD_SEC = 1.2;
+
+function enemyOffset(tSec, opts) {
+  var amp = opts && isFinite(opts.amp) ? opts.amp : ENEMY_AMP_PX;
+  var period = opts && isFinite(opts.period) && opts.period > 0 ? opts.period : ENEMY_PERIOD_SEC;
+  var t = isFinite(tSec) ? tSec : 0;
+  var y = -Math.abs(Math.sin(Math.PI * t / period)) * amp;
+  return { x: 0, y: y };
+}
+
+function padFields(problem) {
+  return problem && ('remainder' in problem) ? 2 : 1;
+}
+
+function judgeDiv(input, problem) {
+  if (!input || typeof input !== 'object') return false;
+  var ans = input.ans, rem = input.rem;
+  if (ans === '' || ans === null || ans === undefined) return false;
+  if (rem === '' || rem === null || rem === undefined) return false;
+  return Number(ans) === problem.answer && Number(rem) === problem.remainder;
+}
+
+function normalizeInput(input) {
+  if (input === null || input === undefined) return { ans: '', rem: '' };
+  if (typeof input === 'number') return { ans: String(input), rem: '' };
+  if (typeof input === 'object') {
+    return {
+      ans: String(input.ans === null || input.ans === undefined ? '' : input.ans),
+      rem: String(input.rem === null || input.rem === undefined ? '' : input.rem)
+    };
+  }
+  return { ans: '', rem: '' };
+}
+
+function judgeAnswer(input, problem) {
+  if (!problem) return false;
+  var v = normalizeInput(input);
+  if (problem.op === 'div' && ('remainder' in problem)) return judgeDiv(v, problem);
+  return v.ans !== '' && Number(v.ans) === problem.answer;
+}
+
+function answerText(problem) {
+  if ('remainder' in problem) {
+    return 'こたえ ' + problem.answer + ' あまり ' + problem.remainder;
+  }
+  var sym = { add: '＋', sub: '−', mul: '×', div: '÷' }[problem.op];
+  return problem.a + ' ' + sym + ' ' + problem.b + ' ＝ ' + problem.answer;
+}
+
+function inputModeFor(level, savedInput) {
+  if (level >= 4) return 'pad';
+  return savedInput === 'pad' ? 'pad' : 'choice';
+}
+
+function refSec(level) {
+  return timeLimitSec(level);
+}
+
+function dailyRatio(elapsedSec, level) {
+  var e = isFinite(elapsedSec) && elapsedSec > 0 ? elapsedSec : 0;
+  return clamp01(1 - e / refSec(level));
+}
+
+function dailyKey(mode, level, minutes) {
+  return mode + '-' + level + '-' + minutes;
+}
+
+function updateDaily(entry, result) {
+  var prev = (entry && typeof entry === 'object') ? entry : null;
+  var num = function (v) {
+    if (typeof v !== 'number' || !isFinite(v)) return 0;
+    var n = Math.floor(v);
+    return n < 0 ? 0 : n;
+  };
+  var cur = { correct: num(result.correct), score: num(result.score) };
+  var updated = !prev || cur.correct > prev.correct;
+  return { entry: updated ? cur : prev, updated: updated };
 }
 
 function makeStagePlan(stage) {
@@ -727,7 +933,7 @@ function resetQuestEntry(entry) {
 }
 
 function normalizeSaveData(d) {
-  var out = { hs: {}, muted: false, input: 'choice', play: 'quest', hero: 'knight', quest: {} };
+  var out = { hs: {}, muted: false, input: 'choice', play: 'quest', hero: 'knight', quest: {}, daily: {}, level: 0 };
   if (!d || typeof d !== 'object' || Array.isArray(d)) return out;
   if (d.hs && typeof d.hs === 'object' && !Array.isArray(d.hs)) {
     Object.keys(d.hs).forEach(function (k) {
@@ -751,6 +957,22 @@ function normalizeSaveData(d) {
       var entry = { cleared: num(e.cleared, STAGES_PER_MAP), score: num(e.score), best: num(e.best), miss: num(e.miss) };
       if (entry.cleared > 0 || entry.score > 0 || entry.best > 0) out.quest[k] = entry;
     });
+  }
+  if (d.daily && typeof d.daily === 'object' && !Array.isArray(d.daily)) {
+    Object.keys(d.daily).forEach(function (k) {
+      var e = d.daily[k];
+      if (!e || typeof e !== 'object' || Array.isArray(e)) return;
+      var num = function (v) {
+        if (typeof v !== 'number' || !isFinite(v)) return 0;
+        var n = Math.floor(v);
+        return n < 0 ? 0 : n;
+      };
+      var entry = { correct: num(e.correct), score: num(e.score) };
+      if (entry.correct > 0 || entry.score > 0) out.daily[k] = entry;
+    });
+  }
+  if (typeof d.level === 'number' && isFinite(d.level) && Number.isInteger(d.level) && d.level >= 0 && d.level <= 5) {
+    out.level = d.level;
   }
   return out;
 }
@@ -776,19 +998,21 @@ function normalizeSaveData(d) {
   var data = loadData();
 
   var state = {
-    play: data.play, mode: 'add', level: 1, input: data.input,
+    play: data.play, mode: 'add', level: data.level || 1, input: data.input,
     qNum: 0, score: 0, correct: 0, combo: 0,
     problem: null, answered: true, playing: false, gameId: 0,
-    deadline: 0, limitMs: 0, rafId: 0, padValue: '',
+    deadline: 0, limitMs: 0, rafId: 0, padAns: '', padRem: '', padField: 'ans',
     stage: 0, growth: 1, battle: null, isBoss: false, stageMiss: 0,
-    dispHp: 1, dispMax: 1, seqIndex: 0, inputActive: false,
-    phase: 'battle', reviewQueue: [], reviewIndex: 0
+    dispHp: 1, dispMax: 1, seqIndex: 0,
+    phase: 'battle', reviewQueue: [], reviewIndex: 0,
+    daily: false, dailyMinutes: 5, holdDeadline: 0, qStart: 0
   };
 
   var $ = function (id) { return document.getElementById(id); };
   var screens = {
     title: $('screen-title'), map: $('screen-map'), game: $('screen-game'),
-    stageclear: $('screen-stageclear'), result: $('screen-result')
+    stageclear: $('screen-stageclear'), result: $('screen-result'),
+    daily: $('screen-daily'), dailyresult: $('screen-dailyresult')
   };
 
   function showScreen(name) {
@@ -1001,9 +1225,126 @@ function normalizeSaveData(d) {
       '</svg>';
   }
 
-  var ZAKO_SVGS = { slime: svgSlime, mushroom: svgMushroom, bat: svgBat, ghost: svgGhost };
-  var BOSS_SVGS = { kingslime: svgKingSlime, treant: svgTreant, golem: svgGolem, dragon: svgDragon, maou: svgMaou };
-  var ZAKO_NAMES = { slime: 'スライム', mushroom: 'キノコ', bat: 'コウモリ', ghost: 'おばけ' };
+  function svgBone(c1, c2) {
+    return '<svg viewBox="0 0 100 100" aria-hidden="true">' +
+      '<path d="M50 16 C68 16 80 30 80 46 C80 58 72 66 72 74 L28 74 C28 66 20 58 20 46 C20 30 32 16 50 16 Z" fill="' + c1 + '" stroke="' + c2 + '" stroke-width="3"/>' +
+      '<ellipse cx="38" cy="46" rx="8" ry="9" fill="#212529"/><circle cx="40" cy="44" r="2.4" fill="#fff"/>' +
+      '<ellipse cx="62" cy="46" rx="8" ry="9" fill="#212529"/><circle cx="64" cy="44" r="2.4" fill="#fff"/>' +
+      '<path d="M44 60 L47 66 L50 60 L53 66 L56 60" stroke="' + c2 + '" stroke-width="2.5" fill="none" stroke-linecap="round"/>' +
+      '<rect x="30" y="76" width="40" height="7" rx="3.5" fill="' + c1 + '" stroke="' + c2 + '" stroke-width="2.5"/>' +
+      '<circle cx="30" cy="79.5" r="5" fill="' + c1 + '" stroke="' + c2 + '" stroke-width="2.5"/>' +
+      '<circle cx="70" cy="79.5" r="5" fill="' + c1 + '" stroke="' + c2 + '" stroke-width="2.5"/>' +
+      '</svg>';
+  }
+  function svgCactus(c1, c2) {
+    return '<svg viewBox="0 0 100 100" aria-hidden="true">' +
+      '<rect x="38" y="26" width="24" height="60" rx="12" fill="' + c1 + '" stroke="' + c2 + '" stroke-width="3"/>' +
+      '<path d="M38 50 L24 50 Q16 50 16 42 L16 36" fill="none" stroke="' + c2 + '" stroke-width="3"/>' +
+      '<rect x="12" y="28" width="9" height="16" rx="4.5" fill="' + c1 + '" stroke="' + c2 + '" stroke-width="3"/>' +
+      '<path d="M62 58 L76 58 Q84 58 84 50 L84 44" fill="none" stroke="' + c2 + '" stroke-width="3"/>' +
+      '<rect x="79" y="36" width="9" height="16" rx="4.5" fill="' + c1 + '" stroke="' + c2 + '" stroke-width="3"/>' +
+      '<ellipse cx="45" cy="48" rx="4.5" ry="6" fill="#fff"/><circle cx="45.5" cy="49" r="2.4" fill="#212529"/>' +
+      '<ellipse cx="55" cy="48" rx="4.5" ry="6" fill="#fff"/><circle cx="54.5" cy="49" r="2.4" fill="#212529"/>' +
+      '<path d="M44 62 Q50 68 56 62" stroke="#212529" stroke-width="2.6" fill="none" stroke-linecap="round"/>' +
+      '<g stroke="' + c2 + '" stroke-width="2" stroke-linecap="round">' +
+      '<path d="M38 34 l-5 -3"/><path d="M38 44 l-5 -3"/><path d="M62 34 l5 -3"/><path d="M62 70 l5 -3"/><path d="M38 74 l-5 -3"/>' +
+      '</g></svg>';
+  }
+  function svgMoss(c1, c2) {
+    return '<svg viewBox="0 0 100 100" aria-hidden="true">' +
+      '<circle cx="50" cy="54" r="12" fill="' + c1 + '" opacity=".35"/>' +
+      '<path d="M50 22 C70 22 84 38 84 56 C84 74 68 84 50 84 C32 84 16 74 16 56 C16 38 30 22 50 22 Z" fill="' + c1 + '" stroke="' + c2 + '" stroke-width="3"/>' +
+      '<circle cx="30" cy="40" r="5" fill="#fff" opacity=".7"/><circle cx="70" cy="44" r="4" fill="#fff" opacity=".7"/><circle cx="60" cy="30" r="3" fill="#fff" opacity=".7"/>' +
+      '<ellipse cx="40" cy="56" rx="6" ry="8" fill="#fff"/><circle cx="41" cy="58" r="3" fill="#212529"/>' +
+      '<ellipse cx="60" cy="56" rx="6" ry="8" fill="#fff"/><circle cx="59" cy="58" r="3" fill="#212529"/>' +
+      '<path d="M42 70 Q50 76 58 70" stroke="#212529" stroke-width="3" fill="none" stroke-linecap="round"/>' +
+      '<g stroke="' + c2 + '" stroke-width="2.5" stroke-linecap="round">' +
+      '<path d="M50 22 L50 12"/><path d="M32 28 L26 18"/><path d="M68 28 L74 18"/></g>' +
+      '<circle cx="50" cy="10" r="3.5" fill="#fff59d" stroke="' + c2 + '" stroke-width="1.5"/>' +
+      '<circle cx="25" cy="16" r="3" fill="#fff59d" stroke="' + c2 + '" stroke-width="1.5"/>' +
+      '<circle cx="75" cy="16" r="3" fill="#fff59d" stroke="' + c2 + '" stroke-width="1.5"/>' +
+      '</svg>';
+  }
+  function svgWisp(c1, c2) {
+    return '<svg viewBox="0 0 100 100" aria-hidden="true">' +
+      '<path d="M50 10 C62 28 76 38 76 56 C76 74 64 86 50 86 C36 86 24 74 24 56 C24 38 38 28 50 10 Z" fill="' + c1 + '" stroke="' + c2 + '" stroke-width="3"/>' +
+      '<path d="M50 34 C58 46 64 52 64 62 C64 72 58 78 50 78 C42 78 36 72 36 62 C36 52 42 46 50 34 Z" fill="#fff3bf" opacity=".8"/>' +
+      '<ellipse cx="43" cy="58" rx="4.5" ry="6" fill="#fff"/><circle cx="43.5" cy="59" r="2.4" fill="#212529"/>' +
+      '<ellipse cx="57" cy="58" rx="4.5" ry="6" fill="#fff"/><circle cx="56.5" cy="59" r="2.4" fill="#212529"/>' +
+      '<path d="M44 70 Q50 75 56 70" stroke="#212529" stroke-width="2.6" fill="none" stroke-linecap="round"/>' +
+      '</svg>';
+  }
+  function svgBoneKing() {
+    var c1 = '#e9ecef', c2 = '#495057';
+    return '<svg viewBox="0 0 120 120" aria-hidden="true">' +
+      '<path d="M26 36 L36 17 L48 31 L60 12 L72 31 L84 17 L94 36 Z" fill="#ffd43b" stroke="#e8590c" stroke-width="3" stroke-linejoin="round"/>' +
+      '<circle cx="36" cy="17" r="3.6" fill="#ff8787"/><circle cx="60" cy="12" r="4.2" fill="#ff8787"/><circle cx="84" cy="17" r="3.6" fill="#ff8787"/>' +
+      '<path d="M60 36 C86 36 103 55 103 74 C103 91 91 101 60 101 C29 101 17 91 17 74 C17 55 34 36 60 36 Z" fill="' + c1 + '" stroke="' + c2 + '" stroke-width="4"/>' +
+      '<ellipse cx="43" cy="70" rx="11" ry="12" fill="#212529"/><circle cx="46" cy="66" r="3.4" fill="#ff6b6b"/>' +
+      '<ellipse cx="77" cy="70" rx="11" ry="12" fill="#212529"/><circle cx="80" cy="66" r="3.4" fill="#ff6b6b"/>' +
+      '<path d="M46 86 L51 93 L56 86 L60 93 L65 86 L69 93 L74 86" stroke="' + c2 + '" stroke-width="3.5" fill="none" stroke-linecap="round"/>' +
+      '</svg>';
+  }
+  function svgThornQueen() {
+    var c1 = '#d3f9d8', c2 = '#2b8a3e';
+    return '<svg viewBox="0 0 120 120" aria-hidden="true">' +
+      '<path d="M60 14 C70 26 79 31 79 43 L41 43 C41 31 50 26 60 14 Z" fill="#ff8787" stroke="' + c2 + '" stroke-width="3"/>' +
+      '<path d="M60 40 C89 40 103 60 103 77 C103 94 84 106 60 106 C36 106 17 94 17 77 C17 60 31 40 60 40 Z" fill="' + c1 + '" stroke="' + c2 + '" stroke-width="4"/>' +
+      '<g stroke="' + c2 + '" stroke-width="3.5" stroke-linecap="round">' +
+      '<path d="M22 62 L7 55"/><path d="M98 62 L113 55"/><path d="M24 84 L9 86"/><path d="M96 84 L111 86"/></g>' +
+      '<circle cx="7" cy="55" r="4" fill="#ff8787"/><circle cx="113" cy="55" r="4" fill="#ff8787"/>' +
+      '<ellipse cx="46" cy="70" rx="8" ry="11" fill="#fff"/><circle cx="47" cy="72" r="4" fill="#212529"/>' +
+      '<ellipse cx="74" cy="70" rx="8" ry="11" fill="#fff"/><circle cx="73" cy="72" r="4" fill="#212529"/>' +
+      '<path d="M48 88 Q60 98 72 88" stroke="#212529" stroke-width="3.6" fill="none" stroke-linecap="round"/>' +
+      '</svg>';
+  }
+  function svgCrystalDragon() {
+    var c1 = '#99e9f2', c2 = '#1098ad';
+    return '<svg viewBox="0 0 120 120" aria-hidden="true">' +
+      '<path d="M17 72 L31 41 L46 70 Z" fill="' + c1 + '" stroke="' + c2 + '" stroke-width="3" stroke-linejoin="round"/>' +
+      '<path d="M103 72 L89 41 L74 70 Z" fill="' + c1 + '" stroke="' + c2 + '" stroke-width="3" stroke-linejoin="round"/>' +
+      '<path d="M60 24 L84 53 L74 98 L46 98 L36 53 Z" fill="' + c1 + '" stroke="' + c2 + '" stroke-width="4" stroke-linejoin="round"/>' +
+      '<path d="M60 24 L60 98" stroke="' + c2 + '" stroke-width="1.8" opacity=".5"/>' +
+      '<path d="M36 53 L84 53" stroke="' + c2 + '" stroke-width="1.8" opacity=".5"/>' +
+      '<ellipse cx="49" cy="67" rx="6.5" ry="8.5" fill="#fff"/><circle cx="50" cy="68" r="3.4" fill="#212529"/>' +
+      '<ellipse cx="71" cy="67" rx="6.5" ry="8.5" fill="#fff"/><circle cx="70" cy="68" r="3.4" fill="#212529"/>' +
+      '<path d="M50 84 L60 91 L70 84" stroke="#212529" stroke-width="3.6" fill="none" stroke-linecap="round" stroke-linejoin="round"/>' +
+      '<path d="M60 14 L65 24 L55 24 Z" fill="#fff" stroke="' + c2 + '" stroke-width="2.4"/>' +
+      '</svg>';
+  }
+  function svgMagmaGiant() {
+    var c1 = '#ffa8a8', c2 = '#c92a2a';
+    return '<svg viewBox="0 0 120 120" aria-hidden="true">' +
+      '<rect x="22" y="36" width="76" height="66" rx="16" fill="' + c1 + '" stroke="' + c2 + '" stroke-width="4"/>' +
+      '<path d="M22 55 Q36 48 50 57 Q64 66 79 57 Q91 50 98 57" fill="none" stroke="#ff6b6b" stroke-width="3.5" stroke-linecap="round"/>' +
+      '<path d="M22 74 Q38 67 53 76 Q67 85 84 76 Q93 71 98 76" fill="none" stroke="#ffd43b" stroke-width="3" stroke-linecap="round" opacity=".9"/>' +
+      '<rect x="9" y="53" width="14" height="31" rx="7" fill="' + c1 + '" stroke="' + c2 + '" stroke-width="3.5"/>' +
+      '<rect x="97" y="53" width="14" height="31" rx="7" fill="' + c1 + '" stroke="' + c2 + '" stroke-width="3.5"/>' +
+      '<ellipse cx="45" cy="60" rx="8" ry="9" fill="#fff59d"/><circle cx="46" cy="61" r="3.8" fill="#c92a2a"/>' +
+      '<ellipse cx="75" cy="60" rx="8" ry="9" fill="#fff59d"/><circle cx="74" cy="61" r="3.8" fill="#c92a2a"/>' +
+      '<path d="M45 84 L52 91 L60 84 L68 91 L75 84" stroke="#c92a2a" stroke-width="3.5" fill="none" stroke-linecap="round"/>' +
+      '<g stroke="#ff922b" stroke-width="3" stroke-linecap="round"><path d="M36 36 L34 24"/><path d="M60 34 L60 20"/><path d="M84 36 L86 24"/></g>' +
+      '</svg>';
+  }
+  function svgDarkMaou() {
+    var c1 = '#b197fc', c2 = '#5f3dc4';
+    return '<svg viewBox="0 0 120 120" aria-hidden="true">' +
+      '<path d="M29 48 L22 19 L41 34 L60 10 L79 34 L98 19 L91 48 Z" fill="' + c2 + '" stroke="#343a40" stroke-width="3" stroke-linejoin="round"/>' +
+      '<circle cx="60" cy="10" r="4.8" fill="#ff6b6b"/>' +
+      '<path d="M60 43 C91 43 106 65 106 82 C106 99 86 108 60 108 C34 108 14 99 14 82 C14 65 29 43 60 43 Z" fill="' + c1 + '" stroke="' + c2 + '" stroke-width="4"/>' +
+      '<path d="M14 79 Q0 70 7 55 Q17 67 24 65" fill="' + c1 + '" stroke="' + c2 + '" stroke-width="3"/>' +
+      '<path d="M106 79 Q120 70 113 55 Q103 67 96 65" fill="' + c1 + '" stroke="' + c2 + '" stroke-width="3"/>' +
+      '<ellipse cx="44" cy="72" rx="9" ry="12" fill="#212529"/><circle cx="46" cy="70" r="3.8" fill="#ff6b6b"/>' +
+      '<ellipse cx="76" cy="72" rx="9" ry="12" fill="#212529"/><circle cx="74" cy="70" r="3.8" fill="#ff6b6b"/>' +
+      '<path d="M46 91 L53 98 L60 91 L67 98 L74 91" stroke="#212529" stroke-width="3.6" fill="none" stroke-linecap="round" stroke-linejoin="round"/>' +
+      '</svg>';
+  }
+
+  var ZAKO_SVGS = { slime: svgSlime, mushroom: svgMushroom, bat: svgBat, ghost: svgGhost, bone: svgBone, cactus: svgCactus, moss: svgMoss, wisp: svgWisp };
+  var BOSS_SVGS = { kingslime: svgKingSlime, treant: svgTreant, golem: svgGolem, dragon: svgDragon, maou: svgMaou, boneking: svgBoneKing, thornqueen: svgThornQueen, crystaldragon: svgCrystalDragon, magmagiant: svgMagmaGiant, darkmaou: svgDarkMaou };
+  var ZAKO_NAMES = { slime: 'スライム', mushroom: 'キノコ', bat: 'コウモリ', ghost: 'おばけ', bone: 'ホネスケルトン', cactus: 'とげとげサボテン', moss: 'ヒカリゴケむし', wisp: 'ひのたまウィスプ' };
+  var QUICK_ZAKO_KINDS = ['slime', 'mushroom', 'bat', 'ghost'];
+  var ADV_ZAKO_KINDS = ['bone', 'cactus', 'moss', 'wisp'];
   var QUICK_COLOR_POOL = [
     ['#69db7c', '#2f9e44'], ['#74c0fc', '#1971c2'], ['#ffa94d', '#e8590c'],
     ['#e599f7', '#9c36b5'], ['#ff8787', '#e03131'], ['#9775fa', '#5f3dc4']
@@ -1024,7 +1365,7 @@ function normalizeSaveData(d) {
     });
   }
 
-  var fx = { moving: false, raf: 0, osc: 0, lastTs: 0 };
+  var fx = { moving: false, raf: 0, t0: 0 };
   var bannerTimer = 0;
   var speechTimer = 0;
 
@@ -1057,18 +1398,10 @@ function normalizeSaveData(d) {
   }
 
   function enemyLoop(ts) {
-    if (!fx.moving) { fx.raf = 0; fx.lastTs = 0; return; }
-    if (!fx.lastTs) fx.lastTs = ts;
-    var dt = Math.min(0.1, (ts - fx.lastTs) / 1000);
-    fx.lastTs = ts;
-    fx.osc += dt * (Math.PI * 2 / enemyPeriodSec(state.inputActive));
-    var zone = $('battle-zone');
-    var half = zone.clientWidth / 2;
-    var margin = state.isBoss ? 76 : 56;
-    var amp = Math.max(16, half - margin);
-    var x = amp * Math.sin(fx.osc);
-    var bob = 4 * Math.sin(fx.osc * 1.7);
-    $('enemy-wrap').style.transform = 'translate(' + x.toFixed(1) + 'px,' + bob.toFixed(1) + 'px)';
+    if (!fx.moving) { fx.raf = 0; fx.t0 = 0; return; }
+    if (!fx.t0) fx.t0 = ts;
+    var o = enemyOffset((ts - fx.t0) / 1000);
+    $('enemy-wrap').style.transform = 'translate(0px,' + o.y.toFixed(2) + 'px)';
     fx.raf = requestAnimationFrame(enemyLoop);
   }
   function setEnemyMoving(on) {
@@ -1102,7 +1435,8 @@ function normalizeSaveData(d) {
     sp.innerHTML = opt.svg;
     updateHpBar();
     sp.classList.add('intro');
-    fx.osc = Math.random() * 6.283;
+    sp.style.transform = enemyScaleFor(state.level) > 1 ? 'scale(' + enemyScaleFor(state.level) + ')' : '';
+    fx.t0 = 0;
     if (state.isBoss) {
       addOnce($('battle-zone'), 'quake');
       showBanner('ボスの ' + opt.name + 'が あらわれた！！', 1500);
@@ -1115,7 +1449,7 @@ function normalizeSaveData(d) {
   }
 
   function spawnQuestEnemy() {
-    var theme = STAGE_THEMES[state.stage - 1];
+    var theme = themeFor(state.level, state.stage);
     var idx = state.battle.enemyIndex;
     var en = state.battle.plan[idx];
     if (en.kind === 'boss') {
@@ -1127,7 +1461,7 @@ function normalizeSaveData(d) {
   }
 
   function spawnQuickEnemy() {
-    var kinds = Object.keys(ZAKO_SVGS);
+    var kinds = (state.play === 'daily' && state.level >= 4) ? ADV_ZAKO_KINDS : QUICK_ZAKO_KINDS;
     var kind = kinds[Math.floor(Math.random() * kinds.length)];
     var cc = QUICK_COLOR_POOL[Math.floor(Math.random() * QUICK_COLOR_POOL.length)];
     spawnEnemy({ boss: false, hp: ZAKO_HP, name: ZAKO_NAMES[kind], svg: ZAKO_SVGS[kind](cc[0], cc[1]) });
@@ -1221,6 +1555,8 @@ function normalizeSaveData(d) {
       btn.addEventListener('click', function () {
         if (lv.level === 0 && !levelAllowsMode(0, state.mode)) return;
         state.level = lv.level;
+        data.level = lv.level;
+        saveData();
         refreshSelections();
       });
       wrap.appendChild(btn);
@@ -1245,9 +1581,17 @@ function normalizeSaveData(d) {
       b.classList.toggle('locked', locked);
       b.classList.toggle('selected', lvl === state.level);
     });
+    var forcePad = state.level >= 4;
     document.querySelectorAll('.input-btn').forEach(function (b) {
-      b.classList.toggle('selected', b.dataset.input === state.input);
+      if (b.dataset.input === 'choice') {
+        b.classList.toggle('locked', forcePad);
+        b.disabled = forcePad;
+      }
+      var eff = inputModeFor(state.level, state.input);
+      b.classList.toggle('selected', b.dataset.input === eff);
     });
+    var note = $('input-note');
+    if (note) note.textContent = forcePad ? 'レベル4・5は すうじで こたえてね' : '';
     $('btn-start').textContent = state.play === 'quest' ? '🚀 ぼうけんに でかける！' : '🚀 スタート！';
   }
 
@@ -1276,6 +1620,7 @@ function normalizeSaveData(d) {
   });
   document.querySelectorAll('.input-btn').forEach(function (b) {
     b.addEventListener('click', function () {
+      if (state.level >= 4) return;
       state.input = b.dataset.input;
       data.input = state.input;
       saveData();
@@ -1312,13 +1657,18 @@ function normalizeSaveData(d) {
     }
   });
 
+  function effInput() {
+    return inputModeFor(state.level, state.input);
+  }
   function setupInputArea() {
-    $('choices').style.display = state.input === 'choice' ? 'grid' : 'none';
-    $('numpad').style.display = state.input === 'pad' ? 'block' : 'none';
+    var im = effInput();
+    $('choices').style.display = im === 'choice' ? 'grid' : 'none';
+    $('numpad').style.display = im === 'pad' ? 'block' : 'none';
   }
 
   function startQuick() {
     state.play = 'quick';
+    state.daily = false;
     state.playing = true;
     state.gameId++;
     state.qNum = 0;
@@ -1345,6 +1695,7 @@ function normalizeSaveData(d) {
   function startStage(stage) {
     var theme = STAGE_THEMES[stage - 1];
     state.play = 'quest';
+    state.daily = false;
     state.playing = true;
     state.gameId++;
     state.stage = stage;
@@ -1374,6 +1725,110 @@ function normalizeSaveData(d) {
   function enterMap() {
     renderMap();
     showScreen('map');
+  }
+
+  var dailySel = { level: 1, mode: 'add', minutes: 5 };
+
+  function renderDailySelect() {
+    var lw = $('daily-levels');
+    lw.innerHTML = '';
+    LEVELS.forEach(function (lv) {
+      var btn = document.createElement('button');
+      btn.className = 'level-btn' + (lv.level === dailySel.level ? ' selected' : '');
+      btn.innerHTML = lv.label + '<small>' + lv.grade + '</small>';
+      btn.addEventListener('click', function () {
+        dailySel.level = lv.level;
+        if (!levelAllowsMode(lv.level, dailySel.mode)) dailySel.mode = 'add';
+        renderDailySelect();
+      });
+      lw.appendChild(btn);
+    });
+    var mw = $('daily-modes');
+    mw.innerHTML = '';
+    MODES.forEach(function (m) {
+      var btn = document.createElement('button');
+      var locked = !levelAllowsMode(dailySel.level, m.id);
+      btn.className = 'mode-btn' + (locked ? ' locked' : (m.id === dailySel.mode ? ' selected' : ''));
+      btn.dataset.mode = m.id;
+      btn.textContent = m.sym + ' ' + m.label;
+      if (!locked) btn.addEventListener('click', function () { dailySel.mode = m.id; renderDailySelect(); });
+      mw.appendChild(btn);
+    });
+    document.querySelectorAll('.daily-min').forEach(function (b) {
+      b.classList.toggle('selected', Number(b.dataset.min) === dailySel.minutes);
+    });
+    var best = data.daily[dailyKey(dailySel.mode, dailySel.level, dailySel.minutes)];
+    $('daily-best').textContent = best ? best.correct + 'もん せいかい（スコア ' + best.score + '）' : '−';
+  }
+
+  function enterDaily() {
+    renderDailySelect();
+    showScreen('daily');
+  }
+
+  function startDaily() {
+    state.play = 'daily';
+    state.daily = true;
+    state.mode = dailySel.mode;
+    state.level = dailySel.level;
+    state.dailyMinutes = dailySel.minutes;
+    state.playing = true;
+    state.gameId++;
+    state.qNum = 0;
+    state.score = 0;
+    state.correct = 0;
+    state.combo = 0;
+    state.stage = 0;
+    state.growth = 1;
+    state.battle = null;
+    state.stageMiss = 0;
+    state.seqIndex = 0;
+    state.phase = 'battle';
+    state.reviewQueue = [];
+    state.reviewIndex = 0;
+    state.limitMs = 0;
+    state.dailyDefeated = 0;
+    state.holdDeadline = performance.now() + dailySel.minutes * 60 * 1000;
+    setupInputArea();
+    resetBattleZone(0);
+    renderHero();
+    $('stage-label').style.display = 'none';
+    showScreen('game');
+    spawnQuickEnemy();
+    nextQuestion();
+    dailyTick();
+  }
+
+  function dailyTick() {
+    if (!state.daily || !state.playing) return;
+    var remain = state.holdDeadline - performance.now();
+    var total = state.dailyMinutes * 60 * 1000;
+    var ratio = Math.max(0, remain / total);
+    var bar = $('timer-bar');
+    bar.style.width = (ratio * 100) + '%';
+    bar.classList.toggle('low', ratio < 0.15);
+    if (remain <= 0) { finishDaily(); return; }
+    state.holdRaf = requestAnimationFrame(dailyTick);
+  }
+
+  function finishDaily() {
+    if (!state.daily) return;
+    state.playing = false;
+    state.daily = false;
+    if (state.holdRaf) { cancelAnimationFrame(state.holdRaf); state.holdRaf = 0; }
+    stopTimer();
+    setEnemyMoving(false);
+    $('feedback').classList.remove('show');
+    var key = dailyKey(state.mode, state.level, state.dailyMinutes);
+    var res = updateDaily(data.daily[key] || null, { correct: state.correct, score: state.score });
+    data.daily[key] = res.entry;
+    saveData();
+    $('dr-correct').textContent = state.correct + 'もん';
+    $('dr-score').textContent = state.score;
+    $('dr-defeated').textContent = String(state.dailyDefeated || 0);
+    $('dr-record').style.display = res.updated ? 'block' : 'none';
+    showScreen('dailyresult');
+    if (res.updated) dropConfetti(40);
   }
 
   var MAP_POS = [
@@ -1446,13 +1901,24 @@ function normalizeSaveData(d) {
   $('btn-quit').addEventListener('click', function () {
     stopTimer();
     setEnemyMoving(false);
+    if (state.holdRaf) { cancelAnimationFrame(state.holdRaf); state.holdRaf = 0; }
     state.answered = true;
     state.playing = false;
+    state.daily = false;
     state.gameId++;
     $('feedback').classList.remove('show');
     if (state.play === 'quest') enterMap();
     else { renderHiscores(); showScreen('title'); }
   });
+
+  $('btn-daily').addEventListener('click', enterDaily);
+  $('btn-daily-back').addEventListener('click', function () { renderHiscores(); showScreen('title'); });
+  $('btn-daily-start').addEventListener('click', startDaily);
+  document.querySelectorAll('.daily-min').forEach(function (b) {
+    b.addEventListener('click', function () { dailySel.minutes = Number(b.dataset.min); renderDailySelect(); });
+  });
+  $('btn-dr-retry').addEventListener('click', enterDaily);
+  $('btn-dr-title').addEventListener('click', function () { renderHiscores(); showScreen('title'); });
 
   function stopTimer() {
     if (state.rafId) { cancelAnimationFrame(state.rafId); state.rafId = 0; }
@@ -1473,8 +1939,9 @@ function normalizeSaveData(d) {
 
   function renderProblem() {
     state.answered = false;
-    state.padValue = '';
-    state.inputActive = false;
+    state.padAns = '';
+    state.padRem = '';
+    state.padField = 'ans';
 
     var q = $('question');
     q.textContent = state.problem.a + ' ' + OP_SYM[state.problem.op] + ' ' + state.problem.b + ' ＝ ？';
@@ -1482,7 +1949,7 @@ function normalizeSaveData(d) {
     void q.offsetWidth;
     q.classList.add('pop');
 
-    if (state.input === 'choice') {
+    if (effInput() === 'choice') {
       var wrap = $('choices');
       wrap.innerHTML = '';
       makeChoices(state.problem.answer, Math.random).forEach(function (c) {
@@ -1493,11 +1960,61 @@ function normalizeSaveData(d) {
         wrap.appendChild(btn);
       });
     } else {
-      $('pad-display').innerHTML = '&nbsp;';
+      renderPad();
     }
 
+    state.qStart = performance.now();
     state.deadline = performance.now() + state.limitMs;
-    tickTimer();
+    if (!state.daily) tickTimer();
+  }
+
+  function renderPad() {
+    var two = padFields(state.problem) === 2;
+    $('pad-fields').classList.toggle('single', !two);
+    $('pf-ans').classList.remove('wrong');
+    $('pf-rem').classList.remove('wrong');
+    $('pad-left').style.display = two ? '' : 'none';
+    $('pad-right').style.display = two ? '' : 'none';
+    padFocus('ans');
+    padPaint();
+  }
+
+  function padFocus(f) {
+    if (f === 'rem' && padFields(state.problem) !== 2) return;
+    state.padField = f;
+    $('pf-ans').classList.toggle('active', f === 'ans');
+    $('pf-rem').classList.toggle('active', f === 'rem');
+  }
+  function padPush(d) {
+    if (state.answered) return;
+    if (state.padField === 'ans') { if (state.padAns.length < 4) state.padAns += d; }
+    else { if (state.padRem.length < 2) state.padRem += d; }
+    padPaint();
+  }
+  function padClear() {
+    if (state.answered) return;
+    if (state.padField === 'ans') state.padAns = ''; else state.padRem = '';
+    padPaint();
+  }
+  function padPaint() {
+    $('pad-ans').textContent = state.padAns;
+    $('pad-rem').textContent = state.padRem;
+    var two = padFields(state.problem) === 2;
+    var ready = two ? (state.padAns !== '' && state.padRem !== '') : (state.padAns !== '');
+    $('pad-ok').disabled = !ready;
+    $('pad-hint').textContent = (two && !ready)
+      ? '「こたえ」と「あまり」の りょうほうを 入れると おせます（わりきれる時は あまりに 0）'
+      : '';
+  }
+  function padSubmit() {
+    if (state.answered) return;
+    if (padFields(state.problem) === 2) {
+      if (state.padAns === '' || state.padRem === '') return;
+      handleAnswer({ ans: state.padAns, rem: state.padRem });
+    } else {
+      if (state.padAns === '') return;
+      handleAnswer(Number(state.padAns));
+    }
   }
 
   function nextQuestion() {
@@ -1524,7 +2041,10 @@ function normalizeSaveData(d) {
       state.problem = genProblem(state.mode, state.level, Math.random, state.play === 'quest' ? state.growth : 1);
     }
 
-    if (state.play === 'quick') {
+    if (state.daily) {
+      spawnQuickEnemy();
+      $('hud-progress').textContent = 'せいかい ' + state.correct;
+    } else if (state.play === 'quick') {
       spawnQuickEnemy();
       $('hud-progress').textContent = 'もんだい ' + state.qNum + '/' + QUESTIONS_PER_GAME;
     } else {
@@ -1541,28 +2061,15 @@ function normalizeSaveData(d) {
     renderProblem();
   }
 
-  function markInputActive() {
-    if (!state.answered) state.inputActive = true;
-  }
-  $('choices').addEventListener('pointerover', markInputActive);
-  $('choices').addEventListener('pointerdown', markInputActive);
-  $('choices').addEventListener('touchstart', markInputActive, { passive: true });
-
   document.querySelectorAll('.pad-btn').forEach(function (b) {
     b.addEventListener('click', function () {
       if (state.answered) return;
       var key = b.dataset.key;
-      if (key === 'clear') {
-        state.padValue = '';
-      } else if (key === 'ok') {
-        if (state.padValue === '') return;
-        handleAnswer(Number(state.padValue));
-        return;
-      } else if (state.padValue.length < 4) {
-        state.padValue += key;
-      }
-      state.inputActive = state.padValue.length > 0;
-      $('pad-display').textContent = state.padValue || ' ';
+      if (key === 'clear') { padClear(); }
+      else if (key === 'left') { padFocus('ans'); }
+      else if (key === 'right') { padFocus('rem'); }
+      else if (key === 'ok') { padSubmit(); }
+      else { padPush(key); }
     });
   });
 
@@ -1595,7 +2102,7 @@ function normalizeSaveData(d) {
   function handleReviewAnswer(value) {
     state.answered = true;
     stopTimer();
-    var isCorrect = value === state.problem.answer;
+    var isCorrect = judgeAnswer(value, state.problem);
     var gid = state.gameId;
     var fb = $('feedback');
     var main = $('fb-main');
@@ -1613,7 +2120,7 @@ function normalizeSaveData(d) {
       main.textContent = value === null ? '⏰ じかんぎれ！' : 'ざんねん！';
       main.className = 'bad';
       sub.textContent = 'だいじょうぶ！ こたえを おぼえよう。';
-      ans.textContent = state.problem.a + ' ' + OP_SYM[state.problem.op] + ' ' + state.problem.b + ' ＝ ' + state.problem.answer;
+      ans.textContent = answerText(state.problem);
       soundWrong();
     }
     state.reviewIndex++;
@@ -1635,9 +2142,14 @@ function normalizeSaveData(d) {
     stopTimer();
     setEnemyMoving(false);
 
-    var remain = Math.max(0, state.deadline - performance.now());
-    var ratio = remain / state.limitMs;
-    var isCorrect = value === state.problem.answer;
+    var ratio;
+    if (state.daily) {
+      ratio = dailyRatio((performance.now() - state.qStart) / 1000, state.level);
+    } else {
+      var remain = Math.max(0, state.deadline - performance.now());
+      ratio = remain / state.limitMs;
+    }
+    var isCorrect = judgeAnswer(value, state.problem);
     var gid = state.gameId;
 
     var fb = $('feedback');
@@ -1661,6 +2173,7 @@ function normalizeSaveData(d) {
         stageClear = res.stageClear;
       } else {
         defeated = true;
+        if (state.daily) state.dailyDefeated++;
       }
       $('hud-score').textContent = 'スコア ' + state.score;
 
@@ -1712,13 +2225,17 @@ function normalizeSaveData(d) {
     } else {
       state.combo = 0;
       state.stageMiss++;
-      state.reviewQueue = addToReview(state.reviewQueue, state.problem);
+      if (!state.daily) state.reviewQueue = addToReview(state.reviewQueue, state.problem);
+      if (effInput() === 'pad' && padFields(state.problem) === 2 && value && typeof value === 'object') {
+        $('pf-ans').classList.toggle('wrong', Number(value.ans) !== state.problem.answer);
+        $('pf-rem').classList.toggle('wrong', Number(value.rem) !== state.problem.remainder);
+      }
       dodgeFx();
       soundWrong();
       main.textContent = value === null ? '⏰ じかんぎれ！' : 'ざんねん！';
       main.className = 'bad';
       sub.textContent = 'だいじょうぶ！ つぎは できるよ。こたえは…';
-      ans.textContent = state.problem.a + ' ' + OP_SYM[state.problem.op] + ' ' + state.problem.b + ' ＝ ' + state.problem.answer;
+      ans.textContent = answerText(state.problem);
       setTimeout(function () {
         if (gid !== state.gameId || !state.playing) return;
         fb.classList.add('show');
