@@ -295,7 +295,9 @@
     #hiscore-table { font-size: .78rem; }
   }
 
-  @media (max-height: 720px) {
+  /* B-03: スマホ（狭い画面）または縦の短い画面で1画面に収める。
+     旧 max-height:720px は最近のiPhone(縦844px等)で発火せず未適用だった＝max-width併用へ是正 */
+  @media (max-width: 500px), (max-height: 820px) {
     #timer-wrap { margin-bottom: 6px; }
     #stage-label { margin-bottom: 4px; }
     #battle-zone { height: 128px; margin-bottom: 6px; }
